@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <title>Seguimiento de procesos de Audio</title>
-    <!-- Tailwind para estilos -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React 18 + ReactDOM UMD -->
+    <!-- React 18 -->
     <script
       src="https://unpkg.com/react@18/umd/react.development.js"
       crossorigin
@@ -14,13 +14,14 @@
       src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
       crossorigin
     ></script>
-    <!-- Babel para poder usar JSX en el navegador -->
+    <!-- Babel para poder usar JSX en este mismo archivo -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
   <body class="bg-gray-100">
     <div id="root"></div>
 
-    <script type="text/babel">
+    <!-- TODO EL CÓDIGO DE LA APP -->
+    <script type="text/babel" data-presets="env,react">
       const { useState } = React;
 
       // =====================
@@ -208,9 +209,7 @@
         const color =
           percent !== null && percent >= 85 ? "#16a34a" : "#dc2626";
         return {
-          background: `conic-gradient(${color} ${
-            value * 3.6
-          }deg, #e5e7eb 0deg)`,
+          background: `conic-gradient(${color} ${value * 3.6}deg, #e5e7eb 0deg)`,
         };
       }
 
@@ -243,7 +242,7 @@
           return CENTER_TO_PROVINCE[centroNorm];
         }
         const tokens = centroNorm
-          .split(/[,-()]/)
+          .split(/[,\-()]/)
           .map((t) => t.trim())
           .filter(Boolean);
         for (let i = tokens.length - 1; i >= 0; i--) {
@@ -256,7 +255,7 @@
       }
 
       // =====================
-      // App
+      // Componente principal
       // =====================
 
       function App() {
@@ -280,9 +279,7 @@
         const [selectedStoreId, setSelectedStoreId] = useState(null);
 
         function handlePin() {
-          if (pin.trim().toUpperCase() === "AR4321") {
-            setAuthorized(true);
-          }
+          if (pin.trim().toUpperCase() === "AR4321") setAuthorized(true);
         }
 
         function handleApplyStores() {
@@ -302,9 +299,7 @@
               correo = "",
               centroRegional = "",
             ] = parts;
-
             const provinciaInferida = inferProvincia(centro, provincia);
-
             return {
               id: index + 1,
               raw,
@@ -359,9 +354,7 @@
 
           if (
             filterProvincia &&
-            !store.provincia
-              .toLowerCase()
-              .includes(filterProvincia.toLowerCase())
+            !store.provincia.toLowerCase().includes(filterProvincia.toLowerCase())
           )
             return false;
 
@@ -459,11 +452,9 @@
         }
 
         const allVisits = stores.flatMap((s) => s.visitas);
-
         const visitasValidasGlobal = allVisits.filter(
           (v) => v.fecha && v.excelName && isValidFecha(v.fecha)
         );
-
         const totalVisitas = visitasValidasGlobal.length;
         const totalTiendas = stores.length;
         const tiendasConVisita = stores.filter((s) =>
@@ -482,13 +473,11 @@
         const hitMediaGlobal = porcentajeSi(
           visitasValidasGlobal.map((v) => v.hit)
         );
-
         const visitasConAAR = visitasValidasGlobal.filter(
           (v) => typeof v.aar === "number" && !isNaN(v.aar)
         );
         const conteoAAR = visitasConAAR.length;
         const aarMediaGlobal = media(visitasConAAR.map((v) => v.aar));
-
         const algunFechaInvalida = allVisits.some(
           (v) => v.fecha && !isValidFecha(v.fecha)
         );
@@ -534,7 +523,7 @@
                   </button>
                 </header>
 
-                {/* MAPA CHECKLIST + DASHBOARD */}
+                {/* MAPA CHECKLIST + DASHBOARD HORIZONTAL */}
                 <section className="mt-6 space-y-6">
                   {/* Mapa checklist */}
                   <div className="bg-white p-6 rounded-2xl shadow">
@@ -565,9 +554,7 @@
                                 className="text-[11px] text-gray-700 flex gap-1"
                               >
                                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                                <span className="leading-tight">
-                                  {item}
-                                </span>
+                                <span className="leading-tight">{item}</span>
                               </li>
                             ))}
                           </ul>
@@ -579,7 +566,8 @@
                   {/* Dashboard horizontal por tienda */}
                   <div className="bg-white p-4 rounded-2xl shadow">
                     <h3 className="font-bold text-sm mb-3">
-                      Dashboard horizontal por tienda (media de todos los Excel)
+                      Dashboard horizontal por tienda (media de todos los
+                      Excel)
                     </h3>
                     {stores.length === 0 ? (
                       <p className="text-xs text-gray-500">
@@ -611,9 +599,7 @@
                               <div className="flex justify-between items-start mb-1">
                                 <div>
                                   <p className="text-xs font-semibold">
-                                    {store.centro ||
-                                      store.codigo ||
-                                      store.raw}
+                                    {store.centro || store.codigo || store.raw}
                                   </p>
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <span
@@ -659,12 +645,9 @@
                                     </div>
                                   </div>
                                   <div className="text-[10px]">
-                                    <p className="font-semibold">
-                                      Checklist
-                                    </p>
+                                    <p className="font-semibold">Checklist</p>
                                     <p className="text-gray-500 leading-tight">
-                                      % medio de checklist de todas las
-                                      visitas.
+                                      % medio de checklist de todas las visitas.
                                     </p>
                                   </div>
                                 </div>
@@ -691,17 +674,17 @@
                         })}
                       </div>
                     )}
-                  </div>
 
-                  {algunFechaInvalida && (
-                    <p className="text-xs text-red-500 mt-1">
-                      Hay fechas con formato incorrecto. Usa siempre el
-                      formato <strong>dd/mm/aaaa</strong>.
-                    </p>
-                  )}
+                    {algunFechaInvalida && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Hay fechas con formato incorrecto. Usa siempre el
+                        formato <strong>dd/mm/aaaa</strong>.
+                      </p>
+                    )}
+                  </div>
                 </section>
 
-                {/* LISTADO TIENDAS + DETALLE */}
+                {/* LISTADO DE TIENDAS + DETALLE */}
                 <div className="mt-10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
                   {/* Lateral listado */}
                   <aside className="bg-white p-5 rounded-2xl shadow h-[70vh] overflow-auto">
@@ -714,12 +697,10 @@
                     </p>
                     <textarea
                       className="w-full p-2 border rounded mb-2 text-xs h-24"
-                      placeholder={
-                        "CODIGO\tPROPIETARIO\tCENTRO\tPROVINCIA\tCORREO\tDELEGADO REGIONAL"
-                      }
+                      placeholder="CODIGO	PROPIETARIO	CENTRO	PROVINCIA	CORREO	DELEGADO REGIONAL (pegado con tabuladores)"
                       value={storesInput}
                       onChange={(e) => setStoresInput(e.target.value)}
-                    />
+                    ></textarea>
                     <button
                       onClick={handleApplyStores}
                       className="mb-4 text-xs px-3 py-1 rounded-full bg-red-600 text-white font-semibold shadow"
@@ -727,6 +708,7 @@
                       Aplicar listado
                     </button>
 
+                    {/* Buscador global */}
                     <input
                       type="text"
                       placeholder="Buscar por cualquier campo..."
@@ -735,7 +717,7 @@
                       onChange={(e) => setSearch(e.target.value)}
                     />
 
-                    {/* Filtros rápidos tipo Excel */}
+                    {/* Filtros tipo Excel: faldón rojo horizontal */}
                     <div className="bg-red-600 text-white rounded-2xl p-3 mb-3">
                       <p className="text-[11px] font-semibold mb-2">
                         Filtros rápidos por columna (tipo Excel)
@@ -753,7 +735,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
                           value={filterPropietario}
@@ -768,7 +749,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[160px]"
                           value={filterCentro}
@@ -781,7 +761,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
                           value={filterProvincia}
@@ -794,7 +773,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
                           value={filterDelegado}
@@ -807,7 +785,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
                           value={filterRegion}
@@ -820,7 +797,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[150px]"
                           value={filterResponsableAudio}
@@ -835,7 +811,6 @@
                             </option>
                           ))}
                         </select>
-
                         <select
                           className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
                           value={filterCentroAAR}
@@ -861,10 +836,7 @@
                           className="text-[11px] font-semibold px-2 py-1 rounded-full inline-block mb-1"
                           style={
                             grupo.delegado === "Sin delegado"
-                              ? {
-                                  backgroundColor: "#e5e7eb",
-                                  color: "#374151",
-                                }
+                              ? { backgroundColor: "#e5e7eb", color: "#374151" }
                               : delegadoColor(grupo.delegado)
                           }
                         >
@@ -878,23 +850,18 @@
                             type="button"
                             onClick={() => setSelectedStoreId(store.id)}
                             className={`w-full text-left border-b py-2 px-1 rounded hover:bg-red-50 transition ${
-                              selectedStoreId === store.id
-                                ? "bg-red-50"
-                                : ""
+                              selectedStoreId === store.id ? "bg-red-50" : ""
                             }`}
                           >
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-medium">
-                                {store.centro ||
-                                  store.codigo ||
-                                  "Sin centro"}
+                                {store.centro || store.codigo || "Sin centro"}
                               </span>
                               <span
                                 className="text-[10px] px-2 py-0.5 rounded-full"
                                 style={delegadoColor(store.centroRegional)}
                               >
-                                {store.provincia ||
-                                  "Provincia sin definir"}
+                                {store.provincia || "Provincia sin definir"}
                               </span>
                             </div>
                             <div className="text-[10px] text-gray-500 flex justify-between mt-1">
@@ -916,9 +883,7 @@
                     <h3 className="text-xl font-bold mb-4">
                       Detalle de tienda
                       {selectedStore
-                        ? `: ${
-                            selectedStore.centro || selectedStore.codigo
-                          }`
+                        ? `: ${selectedStore.centro || selectedStore.codigo}`
                         : ""}
                     </h3>
 
@@ -970,8 +935,7 @@
                                 selectedStore.centroRegional
                               )}
                             >
-                              {selectedStore.centroRegional ||
-                                "Sin delegado"}
+                              {selectedStore.centroRegional || "Sin delegado"}
                             </span>
                           </div>
                         </div>
@@ -1076,8 +1040,7 @@
                                           accept=".xlsx,.xls,.csv"
                                           className="hidden"
                                           onChange={(e) => {
-                                            const file =
-                                              e.target.files?.[0];
+                                            const file = e.target.files?.[0];
                                             if (file) {
                                               updateVisitField(
                                                 selectedStore.id,
@@ -1107,8 +1070,8 @@
                             AAR)
                           </h4>
                           <p className="text-xs text-gray-500 mb-3">
-                            Indica quién visita, el % de checklist, si hubo
-                            HIT y el % AAR.
+                            Indica quién visita, el % de checklist, si hubo HIT
+                            y el % AAR.
                           </p>
                           <div className="border rounded-2xl overflow-hidden">
                             <div className="grid grid-cols-[40px,1.2fr,0.9fr,0.9fr,0.9fr] bg-gray-50 text-[11px] font-semibold px-3 py-2">
@@ -1141,9 +1104,7 @@
                                   >
                                     <option value="">Selecciona...</option>
                                     <option value="Sonia">Sonia</option>
-                                    <option value="Ary Rojas">
-                                      Ary Rojas
-                                    </option>
+                                    <option value="Ary Rojas">Ary Rojas</option>
                                   </select>
                                   <input
                                     type="number"
@@ -1209,7 +1170,7 @@
                   </main>
                 </div>
 
-                {/* RESUMEN GLOBAL / LISTADO DE CENTROS */}
+                {/* RESUMEN GLOBAL */}
                 <section className="mt-10 bg-white p-6 rounded-2xl shadow">
                   <h3 className="font-bold text-lg mb-4 bg-red-600 text-white inline-block px-4 py-2 rounded-2xl">
                     LISTADO DE CENTROS
@@ -1291,9 +1252,7 @@
                                 <td className="px-2 py-1 whitespace-nowrap">
                                   <span
                                     className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
+                                    style={delegadoColor(store.centroRegional)}
                                   >
                                     {store.provincia || "-"}
                                   </span>
@@ -1304,9 +1263,7 @@
                                 <td className="px-2 py-1 whitespace-nowrap">
                                   <span
                                     className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
+                                    style={delegadoColor(store.centroRegional)}
                                   >
                                     {store.centroRegional || "Sin delegado"}
                                   </span>
@@ -1360,7 +1317,6 @@
                           Total visitas válidas:{" "}
                           <strong>{totalVisitas}</strong>
                         </span>
-
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
                             checklistMediaGlobal
@@ -1374,7 +1330,6 @@
                               : "-"}
                           </span>
                         </span>
-
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
                             hitMediaGlobal
@@ -1388,12 +1343,10 @@
                               : "-"}
                           </span>
                         </span>
-
                         <span>
                           Visitas con AAR informado:{" "}
                           <strong>{conteoAAR}</strong>
                         </span>
-
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
                             aarMediaGlobal
