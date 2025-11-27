@@ -1,2325 +1,1497 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PROCESOS AUDIO</title>
-<style>
-  :root{
-    --bg:#f3f4f6;
-    --surface:#ffffff;
-    --ink:#0b1120;
-    --muted:#667085;
-    --soft:#eceff3;
-    --shadow:0 8px 20px rgba(0,0,0,.1);
-    --ring:0 0 0 2px rgba(248,113,113,.2);
-    --grad:linear-gradient(90deg,#111827 0%,#4b5563 40%,#111827 100%);
-    --pillGrad:linear-gradient(180deg,#ffffff 0%,#f2f4f8 100%);
-    --accent:#ef4444;
-    --accent-dark:#b91c1c;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--ink);
-    font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
-  }
-
-  /* ===== Top bar ===== */
-  .topbar{
-    position:sticky;
-    top:0;
-    z-index:30;
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:.6rem;
-    padding:.55rem .9rem .7rem;
-    background:var(--grad);
-    color:#f9fafb;
-    box-shadow:0 8px 20px rgba(0,0,0,.45);
-    border-bottom:1px solid rgba(15,23,42,.8);
-  }
-  .title{
-    display:flex;
-    align-items:center;
-    gap:.35rem;
-    font-weight:900;
-    font-size:22px;
-    flex:0 0 auto;
-    letter-spacing:.03em;
-    text-shadow:0 1px 2px rgba(0,0,0,.6);
-  }
-  .title .ear{
-    font-size:28px;
-    line-height:1;
-    display:inline-block;
-    transform:translateY(2px);
-    filter:drop-shadow(0 2px 2px rgba(0,0,0,.6));
-  }
-
-  /* ===== BOTONES ROJOS (alineados, pequeños, ancho auto) ===== */
-  .btn3d{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:.2rem;
-    padding:.12rem .5rem;
-    border:0;
-    border-radius:9999px;
-    color:#f9fafb;
-    background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dark) 100%);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.25),
-      0 3px 0 rgba(0,0,0,.65),
-      0 11px 20px rgba(0,0,0,.6);
-    cursor:pointer;
-    font-weight:700;
-    font-size:10px;        /* letra más pequeña */
-    line-height:1;
-    height:24px;           /* todos misma altura */
-    white-space:nowrap;    /* no se parten en dos líneas */
-  }
-  .btn3d:active{
-    transform:translateY(1px);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.18),
-      0 2px 0 rgba(0,0,0,.6),
-      0 8px 16px rgba(0,0,0,.6);
-  }
-
-  .bar-right{
-    margin-left:auto;
-    display:flex;
-    align-items:center;
-    gap:.25rem;
-    flex-wrap:nowrap;  /* todos los rojos de la derecha en una línea */
-  }
-
-  .topbar > .btn3d{
-    flex:0 0 auto;     /* los tres de la izquierda también en la misma fila */
-  }
-
-  .stamp{
-    color:#f9fafb;
-    opacity:.9;
-    font-size:11px;         /* un poco más pequeño para que quepa todo */
-    background:rgba(15,23,42,.8);
-    border-radius:9999px;
-    padding:.2rem .6rem;
-    box-shadow:0 2px 8px rgba(0,0,0,.5);
-    white-space:nowrap;
-  }
-  .bar-right .btn3d svg{width:14px;height:14px}
-  .search{
-    flex:1 1 100%;
-    display:flex;
-    align-items:center;
-    background:rgba(15,23,42,.55);
-    padding:.35rem .75rem;
-    border-radius:9999px;
-    margin-top:.3rem;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
-  }
-  .search input{
-    width:100%;
-    border:0;
-    background:transparent;
-    outline:0;
-    color:#e5e7eb;
-    font-weight:600;
-    font-size:13px;
-  }
-  .search input::placeholder{color:rgba(209,213,219,.82);}
-
-  /* ===== Dept selector ===== */
-  .dept-block{
-    display:flex;
-    align-items:center;
-    gap:.25rem;
-  }
-  .dept-select{
-    border-radius:9999px;
-    border:1px solid #e5e7eb;
-    padding:.2rem .6rem;
-    font-size:12px;
-    min-width:150px;
-    background:#f9fafb;
-    box-shadow:inset 0 1px 0 #fff;
-    color:#111827;
-  }
-
-  /* ===== Layout ===== */
-  .wrap{
-    display:grid;
-    grid-template-columns:280px minmax(0,1fr);
-    gap:0;
-    padding:0 0 10px 0;
-    min-height:calc(100dvh - 60px);
-    width:100%;
-  }
-  .left,.right{
-    background:var(--surface);
-  }
-  .left{
-    padding:8px 6px 8px 8px;
-    border-right:1px solid #e5e7eb;
-    box-shadow:var(--shadow);
-    border-radius:0;
-    display:flex;
-    flex-direction:column;
-  }
-  .right{
-    padding:10px;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    position:relative;
-    border-radius:0;
-    box-shadow:var(--shadow);
-  }
-  #deptInfo{margin-bottom:4px;}
-  #processList{flex:1 1 auto;}
-  @media (max-width:1020px){
-    .wrap{
-      grid-template-columns:1fr;
-    }
-    .left{
-      border-right:0;
-      border-bottom:1px solid #e5e7eb;
-    }
-  }
-
-  /* ===== Lista de procesos ===== */
-  .proc-item{
-    display:flex;
-    flex-direction:column;
-    gap:.4rem;
-    background:var(--pillGrad);
-    border-radius:14px;
-    padding:.5rem .7rem;
-    margin:.35rem 0;
-    box-shadow:inset 0 1px 0 #fff,0 1px 0 rgba(0,0,0,.06);
-    border:2px solid transparent;
-  }
-  .proc-item.activo{
-    border-color:rgba(248,113,113,.4);
-    box-shadow:var(--ring),0 1px 0 rgba(0,0,0,.06);
-  }
-  .proc-row{display:flex;align-items:center;gap:.45rem;cursor:pointer}
-  .dot{
-    width:10px;
-    height:10px;
-    border-radius:50%;
-    background:#ddd;
-    box-shadow:inset 0 0 0 2px rgba(0,0,0,.08);
-  }
-  .proc-name{flex:1;font-weight:800;font-size:14px}
-  .proc-acts{display:flex;align-items:center;gap:.3rem}
-  .icon-btn{
-    width:26px;
-    height:26px;
-    border-radius:11px;
-    border:0;
-    background:#f2f4f8;
-    box-shadow:inset 0 1px 0 #fff,0 3px 0 rgba(0,0,0,.13);
-    cursor:pointer;
-    font-size:13px;
-  }
-  .icon-btn:active{transform:translateY(1px)}
-  .proc-detail{display:none}
-  .proc-detail textarea{
-    width:100%;
-    min-height:64px;
-    border-radius:10px;
-    border:1px solid #e6e8ec;
-    padding:.45rem;
-    background:#fff;
-    font-size:12px;
-  }
-
-  /* ===== Dept info caja izquierda ===== */
-  .dept-info-box{
-    padding:6px 7px;
-    border-radius:10px;
-    background:#f9fafb;
-    border:1px solid #e5e7eb;
-    box-shadow:inset 0 1px 0 #fff;
-    font-size:12px;
-  }
-  .dept-info-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:6px;
-    position:relative; /* para menú del lápiz */
-  }
-  .dept-info-title{
-    font-weight:700;
-    font-size:13px;
-    color:#111827;
-  }
-  .dept-desc-toggle{
-    width:26px;
-    height:26px;
-    padding:0;
-    font-size:13px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .dept-edit-menu{
-    position:absolute;
-    right:0;
-    top:28px;
-    background:#020617;
-    border-radius:8px;
-    padding:4px;
-    box-shadow:0 8px 18px rgba(15,23,42,.7);
-    display:flex;
-    flex-direction:column;
-    gap:3px;
-    z-index:20;
-  }
-  .dept-edit-menu button{
-    border:0;
-    border-radius:6px;
-    padding:3px 8px;
-    font-size:11px;
-    background:#111827;
-    color:#e5e7eb;
-    cursor:pointer;
-  }
-  .dept-edit-menu button:active{
-    transform:translateY(1px);
-  }
-
-  /* ===== Subproceso ===== */
-  .module{
-    position:relative;
-    background:var(--pillGrad);
-    border-radius:14px;
-    box-shadow:inset 0 1px 0 #fff,0 1px 0 rgba(0,0,0,.06);
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-    padding:8px;
-    margin-bottom:10px;
-  }
-  .module.module-subchild{
-    margin-left:46px;
-    max-width:calc(100% - 60px);
-    border:1px dashed rgba(148,163,184,.85);
-    box-shadow:0 4px 12px rgba(15,23,42,.12);
-    padding:6px 6px 8px;
-    position:relative;
-  }
-  .module.module-subchild::before{
-    content:"";
-    position:absolute;
-    left:42px;
-    top:-22px;
-    height:22px;
-    border-left:1.5px dashed rgba(148,163,184,.9);
-  }
-  .module.module-subchild::after{
-    content:"";
-    position:absolute;
-    left:0;
-    top:-22px;
-    width:42px;
-    border-top:1.5px dashed rgba(148,163,184,.9);
-  }
-  .module-subchild .mod-head{
-    margin:2px 22px 4px 22px;
-  }
-
-  .mod-head{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    gap:.4rem;
-    background:linear-gradient(135deg,#020617 0%,#1f2937 50%,#020617 100%);
-    color:#e5e7eb;
-    border-radius:12px;
-    padding:.4rem .7rem;
-    box-shadow:0 4px 10px rgba(0,0,0,.45);
-    border-left:4px solid var(--proc,#ef4444);
-  }
-  .mod-title{
-    flex:1;
-    font-weight:900;
-    border:0;
-    background:transparent;
-    color:#f9fafb;
-    outline:0;
-    font-size:14px;
-  }
-  .mod-title::placeholder{color:#9ca3af}
-  .sel{
-    border:1px solid #4b5563;
-    background:#0f172a;
-    color:#e5e7eb;
-    border-radius:10px;
-    padding:.25rem .45rem;
-    font-size:12px;
-    box-shadow:0 1px 0 rgba(255,255,255,.1);
-  }
-  .resp-extra{
-    border:1px solid #4b5563;
-    background:#020617;
-    color:#e5e7eb;
-    border-radius:9999px;
-    padding:.2rem .5rem;
-    font-size:11px;
-    min-width:110px;
-    box-shadow:0 1px 0 rgba(255,255,255,.12);
-  }
-  .pill{
-    height:30px;
-    padding:0 .7rem;
-    background:#111827;
-    border-radius:9999px;
-    color:#f9fafb;
-    border:0;
-    cursor:pointer;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.06),
-      0 3px 0 rgba(0,0,0,.7),
-      0 10px 18px rgba(0,0,0,.75);
-    font-size:12px;
-    font-weight:700;
-  }
-  .pill:active{transform:translateY(1px)}
-  .badge-diana{margin-left:.2rem;}
-
-  .mod-detail{display:none}
-  .mod-detail textarea{
-    width:100%;
-    min-height:50px;
-    border:1px solid #e6e8ec;
-    border-radius:10px;
-    padding:.45rem;
-    background:#fff;
-    font-size:12px;
-  }
-
-  /* ===== Pasos ===== */
-  .steps{
-    position:relative;
-    z-index:0;
-    display:block;
-    padding:8px 4px 18px;
-    width:100%;
-  }
-  .steps > div{
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    gap:4px;
-  }
-
-  .step{
-    position:relative;
-    z-index:2;
-    display:flex;
-    flex-direction:column;
-    align-items:flex-start;
-    background:#ffffff;
-    border-radius:13px;
-    padding:7px 10px 9px 14px;
-    box-shadow:
-      inset 0 1px 0 #fff,
-      0 3px 0 rgba(15,23,42,.24),
-      0 8px 16px rgba(15,23,42,.16);
-    width:290px;
-    min-height:58px;
-    border:1px solid rgba(148,163,184,.7);
-  }
-  .step::before{
-    content:"";
-    position:absolute;
-    left:0;
-    top:0;
-    bottom:0;
-    width:7px;
-    border-radius:13px 0 0 13px;
-    background:var(--proc,#e5e7eb);
-    opacity:0.95;
-  }
-
-  .bubble{
-    min-width:22px;
-    height:22px;
-    border-radius:9999px;
-    background:linear-gradient(180deg,var(--proc,#2563eb) 0%,#1d4ed8 100%);
-    color:#fff;
-    display:grid;
-    place-items:center;
-    font-weight:900;
-    font-size:11px;
-    margin-bottom:3px;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.6),
-      0 2px 0 rgba(15,23,42,.35),
-      0 4px 7px rgba(15,23,42,.35);
-    padding:0 2px;
-    z-index:1;
-  }
-  .step.selected{
-    box-shadow:
-      0 0 0 2px rgba(37,99,235,.3),
-      0 3px 0 rgba(15,23,42,.3),
-      0 10px 20px rgba(15,23,42,.24);
-  }
-  .step .title{
-    font-weight:800;
-    border:0;
-    background:transparent;
-    outline:0;
-    width:100%;
-    margin-top:1px;
-    font-size:13.5px;
-    resize:none;
-    overflow:hidden;
-    line-height:1.3;
-    white-space:pre-wrap;
-    word-break:break-word;
-  }
-  .minis{
-    display:flex;
-    gap:.25rem;
-    margin-top:5px;
-    margin-left:auto;
-  }
-  .mini{
-    width:24px;
-    height:24px;
-    border-radius:8px;
-    border:0;
-    background:#f2f4f8;
-    cursor:pointer;
-    box-shadow:inset 0 1px 0 #fff,0 3px 0 rgba(0,0,0,.2);
-    font-size:13px;
-  }
-  .mini:active{transform:translateY(1px)}
-
-  .step.is-meta-step::after{
-    content:"🎯 META";
-    position:absolute;
-    top:4px;
-    right:6px;
-    font-size:11px;
-    font-weight:800;
-    color:#0f172a;
-    padding:2px 7px;
-    border-radius:999px;
-    background:rgba(255,255,255,.97);
-    box-shadow:0 2px 4px rgba(15,23,42,.25);
-  }
-
-  .step-menu{
-    position:absolute;
-    right:6px;
-    bottom:32px;
-    background:#020617;
-    border-radius:10px;
-    padding:4px 5px;
-    display:flex;
-    flex-wrap:wrap;
-    gap:3px;
-    box-shadow:0 7px 18px rgba(15,23,42,.75);
-    z-index:5;
-  }
-  .step-menu button{
-    width:24px;
-    height:24px;
-    border-radius:7px;
-    border:0;
-    background:#111827;
-    color:#e5e7eb;
-    font-size:13px;
-    cursor:pointer;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 3px 0 rgba(0,0,0,.7);
-  }
-  .step-menu button:active{transform:translateY(1px)}
-
-  .step-detail{
-    margin:4px 0 0 26px;
-    width:calc(100% - 26px);
-  }
-  .step-detail textarea{
-    width:100%;
-    min-height:46px;
-    border-radius:9px;
-    border:1px solid #e6e8ec;
-    padding:.35rem .45rem;
-    font-size:12px;
-    background:#fff;
-    resize:vertical;
-  }
-
-  .flow-svg{
-    position:absolute;
-    inset:0;
-    width:100%;
-    height:100%;
-    pointer-events:none;
-    overflow:visible;
-    z-index:0;
-  }
-
-  .chip{
-    display:inline-flex;
-    align-items:center;
-    gap:.3rem;
-    font-weight:800;
-    border-radius:9999px;
-    padding:.18rem .5rem;
-    color:#111;
-    font-size:11px;
-  }
-
-  /* ===== SÍ / NO ===== */
-  .branches{
-    margin:6px 0 0 18px;
-    padding:5px 7px;
-    border-radius:10px;
-    border:1px dashed rgba(148,163,184,.85);
-    background:rgba(248,250,252,.96);
-    box-shadow:0 1px 4px rgba(15,23,42,.08);
-    position:relative;
-    z-index:3;
-    max-width:100%;
-    font-size:11px;
-  }
-  .branches::before{
-    content:"";
-    position:absolute;
-    top:-8px;
-    left:28px;
-    width:0;
-    height:8px;
-    border-left:1px dashed rgba(148,163,184,.85);
-  }
-  .branches-inner{
-    display:flex;
-    flex-wrap:wrap;
-    gap:5px;
-    align-items:flex-start;
-  }
-  .branch{
-    background:#fff;
-    border-radius:8px;
-    padding:.35rem .4rem .4rem;
-    box-shadow:inset 0 1px 0 #fff;
-    flex:1 1 48%;
-    max-width:calc(50% - 4px);
-    min-width:220px;
-    position:relative;
-  }
-  .branch.branch-has-content{
-    border:1px solid rgba(248,113,113,.6);
-  }
-  .branch.yes .bh-label{font-size:11px;font-weight:700;opacity:.85;text-transform:uppercase;}
-  .branch.no .bh-label{font-size:12px;font-weight:900;text-transform:uppercase;}
-  .branch.branch-has-content .bh-label{
-    color:#b91c1c;
-  }
-  .bh-top{
-    display:flex;
-    align-items:center;
-    gap:.25rem;
-    margin-bottom:.25rem;
-    flex-wrap:wrap;
-  }
-  .bh-top-right{
-    margin-left:auto;
-    display:flex;
-    align-items:center;
-    gap:.18rem;
-  }
-  .plist{
-    display:flex;
-    flex-direction:column;
-    gap:.22rem;
-  }
-  .point{
-    display:flex;
-    align-items:center;
-    gap:.25rem;
-    flex-wrap:wrap;
-  }
-  .point .num{
-    min-width:30px;
-    font-weight:900;
-    opacity:.6;
-    font-size:10px;
-  }
-  .pt-input{
-    flex:1 1 260px;
-    border:1px solid #e6e8ec;
-    border-radius:7px;
-    padding:.18rem .35rem;
-    min-width:150px;
-    font-size:11px;
-  }
-  .p-actions{
-    display:flex;
-    align-items:center;
-    gap:.12rem;
-  }
-  .p-mini{
-    width:22px;
-    height:22px;
-    border-radius:7px;
-    border:0;
-    background:#f2f4f8;
-    cursor:pointer;
-    box-shadow:inset 0 1px 0 #fff,0 2px 0 rgba(0,0,0,.1);
-    font-size:11px;
-  }
-  .p-mini:active{transform:translateY(1px)}
-  .p-toggle{
-    background:#e5e7eb;
-    font-weight:900;
-  }
-  .p-extra{
-    display:flex;
-    gap:.16rem;
-  }
-  .children{
-    margin-left:30px;
-    display:flex;
-    flex-direction:column;
-    gap:.16rem;
-  }
-
-  .branch-indicator{
-    margin:6px 0 0 46px;
-    font-size:11px;
-    color:#374151;
-    cursor:pointer;
-    display:inline-flex;
-    align-items:center;
-    gap:4px;
-    background:#e5e7eb;
-    padding:2px 9px;
-    border-radius:999px;
-    border:1px solid #d1d5db;
-    box-shadow:0 1px 3px rgba(148,163,184,.7);
-    z-index:4;
-  }
-  .branch-indicator:hover{
-    background:#d1d5db;
-    color:#111827;
-  }
-
-  .branch-collapse{
-    margin:3px 0 4px auto;
-    font-size:10px;
-    color:#374151;
-    cursor:pointer;
-    background:#e5e7eb;
-    padding:1px 8px;
-    border-radius:999px;
-    display:inline-flex;
-    align-items:center;
-    gap:4px;
-    border:1px solid #d1d5db;
-  }
-  .branch-collapse:hover{
-    background:#d1d5db;
-    color:#111827;
-  }
-
-  .hide{display:none!important}
-
-  .pa-toast{
-    position:fixed;
-    right:12px;
-    bottom:14px;
-    background:#111;
-    color:#fff;
-    padding:.5rem .7rem;
-    border-radius:9px;
-    box-shadow:0 6px 18px rgba(0,0,0,.2);
-    opacity:0;
-    transform:translateY(6px);
-    transition:all .2s;
-    z-index:99999;
-    font:13px system-ui;
-  }
-  .pa-toast.show{opacity:1;transform:translateY(0)}
-
-  @media print{
-    .pa-tools-hide,
-    .topbar,
-    .left,
-    .search{
-      display:none!important;
-    }
-    body{
-      background:#fff;
-    }
-    .wrap{
-      grid-template-columns:1fr;
-      padding:0;
-    }
-    .right{
-      box-shadow:none;
-      border-radius:0;
-      padding:0;
-    }
-    .module{
-      page-break-inside:avoid;
-      margin-bottom:10mm;
-    }
-  }
-
-  body.pa-locked .is-readonly{opacity:.6;filter:saturate(.6)}
-  body.pa-locked .lock-block{ pointer-events:none !important; opacity:.6; }
-  body.pa-locked input[readonly],
-  body.pa-locked textarea[readonly]{background:#f7f7f7}
-</style>
-</head>
-<body>
-  <div class="topbar">
-    <div class="title"><span class="ear">🎧</span> PROCESOS AUDIO</div>
-
-    <button id="btnAddProcess" class="btn3d">+ Procesos</button>
-    <button id="btnAddSubprocPaso" class="btn3d">+ Subproceso + Paso</button>
-    <button id="btnAddStepGlobal" class="btn3d" title="Añadir paso al subproceso abierto">+ Paso</button>
-
-    <div class="bar-right">
-      <button id="paPinBtn" class="btn3d pa-tools-hide" title="PIN (AR4321)">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 8V7a5 5 0 10-10 0v1M6 8h12v12H6V8z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        PIN
-      </button>
-      <button id="paPdfBtn" class="btn3d pa-tools-hide" title="Imprimir / Guardar PDF">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9V4h12v5M6 18h12M6 14h12" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        PDF
-      </button>
-      <button id="paHtmlBtn" class="btn3d pa-tools-hide" title="Descargar HTML idéntico">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        HTML
-      </button>
-      <button id="paSaveCloud" class="btn3d pa-tools-hide" title="Guardar copia en nube (local)">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 18a4 4 0 110-8 5 5 0 119.9 1H18a3 3 0 110 6H7z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Nube
-      </button>
-
-      <div class="dept-block">
-        <button id="btnDeptAdd" class="btn3d" title="Añadir departamento">Departamentos+</button>
-        <select id="deptSelect" class="dept-select">
-          <option value="">(Sin departamentos)</option>
-        </select>
-      </div>
-
-      <span id="stamp" class="stamp">—</span>
-      <button id="btnSave" class="btn3d">💾 Guardar</button>
-    </div>
-
-    <div class="search"><input id="q" placeholder="Buscar…"></div>
-  </div>
-
-  <div class="wrap">
-    <div class="left">
-      <div id="deptInfo"></div>
-      <div id="processList"></div>
-    </div>
-    <div class="right" id="modules"></div>
-  </div>
-
-  <div id="procModal" class="hide" style="position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;z-index:50">
-    <div style="background:#fff;border-radius:14px;min-width:320px;max-width:92vw;padding:10px;box-shadow:0 20px 40px rgba(0,0,0,.2)">
-      <div style="font-weight:800;margin:.2rem .2rem .6rem">Selecciona proceso destino</div>
-      <div id="procModalList" style="display:flex;flex-direction:column;gap:.35rem"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:.6rem">
-        <button id="pmCancel" class="btn3d" style="background:#ddd;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.25)">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <input type="file" id="paFilePicker" style="display:none" multiple />
-
-<script>
-function showBlock(el){ if(!el) return; el.classList.remove('hide'); el.style.display='block'; el.setAttribute('aria-hidden','false'); }
-function hideBlock(el){ if(!el) return; el.classList.add('hide'); el.style.display='none'; el.setAttribute('aria-hidden','true'); }
-function toggleBlock(el,open){ open ? showBlock(el) : hideBlock(el); }
-
-/* ===== Estado ===== */
-const LSKEY='pa_v4_dept_3d';
-const RESPONSABLES=['Audiólogo','Responsable','Otros'];
-const colors=['#ffd6a5','#bde0fe','#caffbf','#ffadad','#fdffb6','#bdb2ff','#ffc6ff','#a0e7e5','#c7f9cc','#fbcfe8','#fde68a','#bbf7d0'];
-const uid=()=>'p'+Math.random().toString(36).slice(2,9);
-const stamp=()=>{const d=new Date(),p=n=>n<10?'0'+n:n;return `${p(d.getDate())}/${p(dMonth(d))}/${p(d.getFullYear())}, ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`};
-function dMonth(d){return d.getMonth()+1;}
-
-const state={departments:[], activeDeptId:null};
-let activePid=null;
-let pendingDocTarget=null;
-
-function currentDept(){
-  const d = state.departments.find(d=>d.id===state.activeDeptId);
-  return d || state.departments[0] || null;
-}
-function currentProcesses(){
-  const d=currentDept();
-  return d ? (d.processes || []) : [];
-}
-function findProcessById(pid){
-  return currentProcesses().find(p=>p.id===pid);
-}
-
-function save(){
-  localStorage.setItem(LSKEY,JSON.stringify(state));
-  document.getElementById('stamp').textContent='Última actualización '+stamp();
-}
-function load(){
-  const raw=localStorage.getItem(LSKEY);
-  if(!raw){
-    state.departments=[];
-    state.activeDeptId=null;
-    save();
-  }else{
-    try{
-      const data=JSON.parse(raw);
-      if(Array.isArray(data.departments)){
-        state.departments=data.departments;
-        state.activeDeptId=data.activeDeptId || (data.departments[0]?.id||null);
-      }else if(Array.isArray(data.processes)){
-        const dId=uid();
-        state.departments=[{
-          id:dId,
-          name:'Departamento 1',
-          description:'',
-          _openDesc:false,
-          processes:data.processes
-        }];
-        state.activeDeptId=dId;
-      }
-    }catch(e){
-      state.departments=[];
-      state.activeDeptId=null;
-    }
-  }
-  /* detalle de departamento siempre plegado por defecto */
-  if(Array.isArray(state.departments)){
-    state.departments.forEach(d=>{
-      if(!Array.isArray(d.processes)) d.processes=[];
-      d._openDesc=false;
-    });
-  }
-}
-
-/* auto-resize títulos paso */
-function autoResize(el){
-  if(!el) return;
-  el.style.height='auto';
-  const h = el.scrollHeight || 24;
-  el.style.height = h + 'px';
-}
-
-/* ===== Procesos izquierda ===== */
-function procRow(p){
-  const wrap=document.createElement('div'); wrap.className='proc-item'+(p.id===activePid?' activo':'');
-  wrap.dataset.pid = p.id;
-  const row=document.createElement('div'); row.className='proc-row';
-  row.innerHTML=`<span class="dot" style="background:${p.color}"></span>
-    <span class="proc-name">${p.name}</span>
-    <div class="proc-acts">
-      <button class="icon-btn" title="Detalle">▾</button>
-      <button class="icon-btn" title="Renombrar">✏️</button>
-      <button class="icon-btn" title="Eliminar" style="box-shadow:inset 0 0 0 #fff">🗑️</button>
-    </div>`;
-  row.onclick=e=>{ if(e.target.closest('.icon-btn')) return; activePid=p.id; render(); };
-
-  const det=document.createElement('div');
-  det.className='proc-detail'+(p._openDetail?'':' hide');
-  det.setAttribute('aria-hidden', p._openDetail ? 'false':'true');
-  det.innerHTML=`<textarea placeholder="Detalle del proceso…">${p.detail||''}</textarea>`;
-  const ta=det.querySelector('textarea');
-  ta.oninput=e=>{ p.detail=e.target.value; ta.title=p.detail||''; save(); };
-
-  const [bDet,bRen,bDel]=row.querySelectorAll('.icon-btn');
-  bDet.onclick=e=>{
-    e.stopPropagation();
-    p._openDetail=!p._openDetail;
-    toggleBlock(det,p._openDetail);
-    if(p._openDetail) setTimeout(()=>ta.focus(),0);
-    save();
-  };
-  bRen.onclick=e=>{ e.stopPropagation(); const nn=prompt('Nombre del proceso',p.name); if(nn){p.name=nn;save();render();} };
-  bDel.onclick=e=>{
-    e.stopPropagation();
-    if(confirm('¿Eliminar proceso y sus módulos?')){
-      const dept=currentDept(); if(!dept) return;
-      const i=dept.processes.findIndex(x=>x.id===p.id);
-      if(i>-1){
-        dept.processes.splice(i,1);
-        const procs=currentProcesses();
-        activePid=procs[0]?.id||null;
-        save();
-        render();
-      }
-    }
-  };
-
-  wrap.appendChild(row); wrap.appendChild(det);
-  return wrap;
-}
-function renderProcesses(){
-  const box=document.getElementById('processList'); if(!box) return;
-  box.innerHTML='';
-  const dept=currentDept();
-  if(!dept){
-    box.innerHTML='<div style="font-size:12px;color:#6b7280;padding:4px 4px 6px;">Crea un departamento con “Departamentos+” y luego añade sus procesos.</div>';
-    return;
-  }
-  if(!Array.isArray(dept.processes)) dept.processes=[];
-  dept.processes.forEach(p=>box.appendChild(procRow(p)));
-}
-
-/* ===== Dept info izquierda (lápiz) ===== */
-function renderDeptInfo(){
-  const box=document.getElementById('deptInfo'); if(!box) return;
-  box.innerHTML='';
-  const dept=currentDept();
-  if(!dept){
-    box.innerHTML='';
-    return;
-  }
-  const wrap=document.createElement('div');
-  wrap.className='dept-info-box';
-
-  const header=document.createElement('div');
-  header.className='dept-info-header';
-
-  const title=document.createElement('div');
-  title.className='dept-info-title';
-  title.textContent='Departamento: '+(dept.name || 'Sin nombre');
-
-  const btn=document.createElement('button');
-  btn.className='icon-btn dept-desc-toggle';
-  btn.textContent='✏️';
-  btn.title='Opciones del departamento';
-
-  header.appendChild(title);
-  header.appendChild(btn);
-
-  const menu=document.createElement('div');
-  menu.className='dept-edit-menu hide';
-  menu.innerHTML=`
-    <button data-act="edit">Editar</button>
-    <button data-act="delete">Borrar</button>
-    <button data-act="detail">Detalle</button>
-  `;
-  header.appendChild(menu);
-
-  const desc=document.createElement('div');
-  desc.classList.add('dept-desc');
-  if(!dept._openDesc) desc.classList.add('hide');
-  desc.innerHTML=`<textarea style="width:100%;min-height:52px;margin-top:4px;border-radius:8px;border:1px solid #e5e7eb;padding:4px;font-size:12px;">${dept.description||''}</textarea>`;
-  const ta=desc.querySelector('textarea');
-  ta.oninput=e=>{
-    dept.description=e.target.value;
-    save();
-  };
-
-  btn.onclick=(e)=>{
-    e.stopPropagation();
-    menu.classList.toggle('hide');
-  };
-
-  const bEdit=menu.querySelector('[data-act="edit"]');
-  const bDelete=menu.querySelector('[data-act="delete"]');
-  const bDetail=menu.querySelector('[data-act="detail"]');
-
-  bEdit.onclick=()=>{
-    const locked = sessionStorage.getItem('PA_PIN_OK')!=='1';
-    if(locked){ if(window.paToastFn) window.paToastFn('Modo lectura: bloqueado por PIN'); return; }
-    const nn=prompt('Nombre del departamento', dept.name || '');
-    if(nn){
-      dept.name=nn;
-      save();
-      render();
-    }
-    menu.classList.add('hide');
-  };
-  bDelete.onclick=()=>{
-    const locked = sessionStorage.getItem('PA_PIN_OK')!=='1';
-    if(locked){ if(window.paToastFn) window.paToastFn('Modo lectura: bloqueado por PIN'); return; }
-    if(!confirm('¿Eliminar departamento y todos sus procesos?')){ menu.classList.add('hide'); return; }
-    const idx=state.departments.findIndex(d=>d.id===dept.id);
-    if(idx>-1){
-      state.departments.splice(idx,1);
-      if(state.departments.length){
-        const next=state.departments[Math.min(idx,state.departments.length-1)];
-        state.activeDeptId=next.id;
-        activePid=null;
-      }else{
-        state.activeDeptId=null;
-        activePid=null;
-      }
-      save();
-      render();
-    }
-  };
-  bDetail.onclick=()=>{
-    dept._openDesc = !dept._openDesc;
-    toggleBlock(desc, dept._openDesc);
-    save();
-    menu.classList.add('hide');
-  };
-
-  wrap.appendChild(header);
-  wrap.appendChild(desc);
-  box.appendChild(wrap);
-}
-
-/* ===== Dept selector topbar ===== */
-function renderDeptSelect(){
-  const sel=document.getElementById('deptSelect');
-  if(!sel) return;
-  sel.innerHTML='';
-  if(!state.departments.length){
-    const opt=document.createElement('option');
-    opt.value='';
-    opt.textContent='(Sin departamentos)';
-    sel.appendChild(opt);
-    sel.disabled=true;
-    return;
-  }
-  sel.disabled=false;
-  state.departments.forEach(d=>{
-    const o=document.createElement('option');
-    o.value=d.id;
-    o.textContent=d.name || 'Sin nombre';
-    if(d.id===state.activeDeptId) o.selected=true;
-    sel.appendChild(o);
-  });
-}
-function handleDeptChange(value){
-  if(!value){
-    state.activeDeptId = state.departments[0]?.id || null;
-  }else{
-    state.activeDeptId = value;
-  }
-  const dept=currentDept();
-  if(dept){
-    if(!Array.isArray(dept.processes)) dept.processes=[];
-    activePid = dept.processes[0]?.id || null;
-  }else{
-    activePid=null;
-  }
-  save();
-  render();
-}
-
-/* ===== Modal bandera ===== */
-function openProcPicker(onPick){
-  const modal=document.getElementById('procModal');
-  const list=document.getElementById('procModalList'); list.innerHTML='';
-  const procs=currentProcesses();
-  procs.forEach(p=>{
-    const b=document.createElement('button');
-    b.className='btn3d'; b.style.cssText='justify-content:flex-start;color:#111;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.06);border-radius:12px';
-    b.innerHTML=`<span class="dot" style="background:${p.color}"></span> <strong>${p.name}</strong>`;
-    b.onclick=()=>{ modal.classList.add('hide'); onPick(p.id); };
-    list.appendChild(b);
-  });
-  document.getElementById('pmCancel').onclick=()=>modal.classList.add('hide');
-  modal.classList.remove('hide');
-}
-
-/* ===== helpers pasos ===== */
-function makeStep(){
-  return {
-    id:uid(),
-    title:'Nuevo paso',
-    detail:'',
-    link:null,
-    links:[],
-    docs:[],
-    yes:[],
-    no:[],
-    yesLink:null,
-    noLink:null,
-    _openBranches:false,
-    _editingBranches:false,
-    _openDetailStep:false
-  };
-}
-function pushPoint(arr){ arr.push({id:uid(),text:'',children:[]}); }
-function pushSubPoint(pt){ if(!Array.isArray(pt.children)) pt.children=[]; pt.children.push({id:uid(),text:''}); }
-function delFromArray(arr,id){ const i=arr.findIndex(x=>x.id===id); if(i>-1) arr.splice(i,1); }
-
-/* ===== Layout serpentina ===== */
-function layoutStepsSerpentine(container){
-  const wrappers = Array.from(container.children).filter(w => w.querySelector('.step'));
-  if(!wrappers.length) return;
-
-  wrappers.forEach(w=>{
-    w.style.position='';
-    w.style.left='';
-    w.style.top='';
-  });
-
-  const firstStep = wrappers[0].querySelector('.step');
-  if(!firstStep) return;
-
-  const cardW = firstStep.offsetWidth || 290;
-  const desiredGapX = 34;
-  const gapY = 24;
-
-  const containerWidthRaw = container.clientWidth || (cardW+desiredGapX);
-  const cols = Math.min(3, wrappers.length);
-  const heights = wrappers.map(w => w.offsetHeight);
-
-  const rows = [];
-  wrappers.forEach((w,idx)=>{
-    const r = Math.floor(idx / cols);
-    if(!rows[r]) rows[r]=[];
-    rows[r].push(idx);
-  });
-
-  const rowHeights = [];
-  rows.forEach((idxs,r)=>{
-    let maxH = 0;
-    idxs.forEach(i=>{
-      if(heights[i]>maxH) maxH = heights[i];
-    });
-    rowHeights[r] = maxH + 8;
-  });
-
-  let y = 0;
-
-  rows.forEach((idxs,r)=>{
-    const dirRight = r%2===0;
-    const itemsInRow = idxs.length;
-
-    const availableWidth = Math.max(containerWidthRaw - 20, cardW*itemsInRow);
-    let gapX = desiredGapX;
-    let totalWidth = cardW*itemsInRow + gapX*(itemsInRow-1);
-
-    if(totalWidth > availableWidth && itemsInRow>1){
-      gapX = Math.max(16, (availableWidth - cardW*itemsInRow)/(itemsInRow-1));
-      totalWidth = cardW*itemsInRow + gapX*(itemsInRow-1);
-    }
-
-    let baseX = (containerWidthRaw - totalWidth)/2;
-    if(baseX < 6) baseX = 6;
-
-    idxs.forEach((idx,pos)=>{
-      const wrap = wrappers[idx];
-      const colInRow = dirRight ? pos : (itemsInRow-1-pos);
-      const left = baseX + colInRow*(cardW+gapX);
-
-      wrap.style.position='absolute';
-      wrap.style.left = left+'px';
-      wrap.style.top  = y+'px';
-
-      const step = wrap.querySelector('.step');
-      if(step){
-        step.dataset.row = r;
-        step.dataset.rowDir = dirRight ? '1':'-1';
-      }
-    });
-
-    y += rowHeights[r] + gapY;
-  });
-
-  container.style.height = y + 18 + 'px';
-}
-function layoutAllSteps(){
-  document.querySelectorAll('.steps').forEach(layoutStepsSerpentine);
-}
-
-/* ===== Flechas ===== */
-function drawFlowForSteps(container){
-  const steps = Array.from(container.querySelectorAll('.step'));
-  if(!steps.length) return;
-
-  steps.forEach(s=>s.classList.remove('is-meta-step'));
-
-  const old = container.querySelector('.flow-svg');
-  if(old) old.remove();
-
-  const cRect = container.getBoundingClientRect();
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNS,'svg');
-  svg.classList.add('flow-svg');
-  svg.setAttribute('viewBox',`0 0 ${cRect.width} ${cRect.height}`);
-
-  const defs=document.createElementNS(svgNS,'defs');
-  const markerSmall=document.createElementNS(svgNS,'marker');
-  markerSmall.setAttribute('id','arrowHead');
-  markerSmall.setAttribute('markerWidth','7');
-  markerSmall.setAttribute('markerHeight','7');
-  markerSmall.setAttribute('refX','6');
-  markerSmall.setAttribute('refY','3.5');
-  markerSmall.setAttribute('orient','auto');
-  markerSmall.setAttribute('markerUnits','strokeWidth');
-  const headSmall=document.createElementNS(svgNS,'path');
-  headSmall.setAttribute('d','M0,0 L7,3.5 L0,7 Z');
-  headSmall.setAttribute('fill','#cbd5e1');
-  markerSmall.appendChild(headSmall);
-  defs.appendChild(markerSmall);
-  svg.appendChild(defs);
-
-  const rects = steps.map(s => s.getBoundingClientRect());
-
-  const lastStepEl = steps[steps.length-1];
-  lastStepEl.classList.add('is-meta-step');
-
-  function addPath(d){
-    const path=document.createElementNS(svgNS,'path');
-    path.setAttribute('d',d);
-    path.setAttribute('fill','none');
-    path.setAttribute('stroke','#cbd5e1');
-    path.setAttribute('stroke-width','2.4');
-    path.setAttribute('marker-end','url(#arrowHead)');
-    svg.appendChild(path);
-  }
-
-  function anchor(rect, side){
-    const xLeft = rect.left - cRect.left;
-    const xRight = rect.right - cRect.left;
-    const yTop = rect.top - cRect.top;
-    const yBottom = rect.bottom - cRect.top;
-    const yMid = (yTop + yBottom)/2;
-    const xMid = (xLeft + xRight)/2;
-    switch(side){
-      case 'left': return {x:xLeft,y:yMid};
-      case 'right': return {x:xRight,y:yMid};
-      case 'top': return {x:xMid,y:yTop};
-      case 'bottom': return {x:xMid,y:yBottom};
-    }
-  }
-
-  function getBranchesRectForStep(stepEl){
-    if(!stepEl || !stepEl.parentElement) return null;
-    const parent = stepEl.parentElement;
-    const br = parent.querySelector('.branches');
-    const ind = parent.querySelector('.branch-indicator');
-    if(!br && !ind) return null;
-
-    let top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
-
-    if(br && !br.classList.contains('hide')){
-      const r = br.getBoundingClientRect();
-      top = Math.min(top, r.top);
-      bottom = Math.max(bottom, r.bottom);
-      left = Math.min(left, r.left);
-      right = Math.max(right, r.right);
-    }
-    if(ind && !ind.classList.contains('hide')){
-      const r = ind.getBoundingClientRect();
-      top = Math.min(top, r.top);
-      bottom = Math.max(bottom, r.bottom);
-      left = Math.min(left, r.left);
-      right = Math.max(right, r.right);
-    }
-    if(bottom===-Infinity) return null;
-    return {top,bottom,left,right};
-  }
-
-  for(let i=0;i<rects.length-1;i++){
-    const a = rects[i];
-    const b = rects[i+1];
-    const stepA = steps[i];
-    const stepB = steps[i+1];
-    const rowA = parseInt(stepA.dataset.row || '0',10);
-    const rowB = parseInt(stepB.dataset.row || '0',10);
-
-    let d;
-
-    if(rowA === rowB){
-      let start,end;
-      if(a.left < b.left){
-        start = anchor(a,'right');
-        end   = anchor(b,'left');
-      }else{
-        start = anchor(a,'left');
-        end   = anchor(b,'right');
-      }
-      if(Math.abs(start.y - end.y) < 8){
-        d = `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
-      }else{
-        const midY = (start.y + end.y) / 2;
-        d = `M ${start.x} ${start.y}
-             L ${start.x} ${midY}
-             L ${end.x} ${midY}
-             L ${end.x} ${end.y}`;
-      }
-    }else{
-      const bottomA = anchor(a,'bottom');
-      const topB    = anchor(b,'top');
-      const brRect  = getBranchesRectForStep(stepA);
-
-      const start = {x:bottomA.x, y:bottomA.y};
-
-      let yDown = bottomA.y + 14;
-      if(brRect){
-        const brBottom = brRect.bottom - cRect.top;
-        if(brBottom + 16 > yDown) yDown = brBottom + 16;
-      }
-
-      let yUp = topB.y - 14;
-
-      const allLefts  = rects.map(r => r.left - cRect.left);
-      const allRights = rects.map(r => r.right - cRect.left);
-      const minX = Math.min.apply(null,allLefts);
-      const maxX = Math.max.apply(null,allRights);
-      let corridorX = start.x - 70;
-      if(corridorX < minX - 30){
-        corridorX = minX - 30;
-      }
-      if(corridorX < 8){
-        corridorX = maxX + 34;
-      }
-
-      d = `M ${start.x} ${start.y}
-           L ${start.x} ${yDown}
-           L ${corridorX} ${yDown}
-           L ${corridorX} ${yUp}
-           L ${topB.x} ${yUp}
-           L ${topB.x} ${topB.y}`;
-    }
-    addPath(d);
-  }
-
-  container.appendChild(svg);
-}
-function drawAllFlows(){
-  document.querySelectorAll('.steps').forEach(drawFlowForSteps);
-}
-
-/* ===== SÍ / NO ===== */
-function branchBox(p,m,st,kind,idx){
-  const isYes = kind==='yes';
-  const arr = st[kind] || (st[kind]=[]);
-  const wrap=document.createElement('div'); wrap.className='branch '+(isYes?'yes':'no');
-
-  const hasContent = arr.length>0 || (st[kind+'Link'] && st[kind+'Link'].pid);
-  if(hasContent) wrap.classList.add('branch-has-content');
-
-  const top=document.createElement('div'); top.className='bh-top';
-  const label=document.createElement('div'); label.className='bh-label'; label.textContent=isYes?'SÍ':'NO';
-  const right=document.createElement('div'); right.className='bh-top-right';
-
-  const add=document.createElement('button'); add.className='p-mini'; add.textContent='＋'; add.title='Añadir punto';
-  const flag=document.createElement('button'); flag.className='p-mini'; flag.textContent='🚩'; flag.title='Bandera rama';
-  const delBranch=document.createElement('button'); delBranch.className='p-mini'; delBranch.textContent='🗑'; delBranch.title='Borrar rama';
-
-  add.onclick=()=>{ st._openBranches=true; st._editingBranches=true; pushPoint(arr); save(); renderModules(); };
-  flag.onclick=()=>{ st._openBranches=true; st._editingBranches=true; openProcPicker(pid=>{ st[kind+'Link']={pid}; save(); renderModules(); }); };
-  delBranch.onclick=()=>{
-    if(!arr.length && !st[kind+'Link']) return;
-    if(confirm('¿Borrar puntos de esta rama y su bandera?')){
-      st[kind]=[];
-      delete st[kind+'Link'];
-      save();
-      renderModules();
-    }
-  };
-
-  right.appendChild(add);
-  right.appendChild(flag);
-  right.appendChild(delBranch);
-
-  top.appendChild(label);
-  top.appendChild(right);
-
-  if(st[kind+'Link']?.pid){
-    const dest=currentProcesses().find(x=>x.id===st[kind+'Link'].pid);
-    if(dest){
-      const chip=document.createElement('span'); chip.className='chip'; chip.style.background=dest.color; chip.style.marginLeft='.25rem';
-      chip.innerHTML=`→ <small>Proceso:</small> <strong>${dest.name}</strong>`;
-      top.appendChild(chip);
-    }
-  }
-  wrap.appendChild(top);
-
-  const list=document.createElement('div'); list.className='plist';
-
-  arr.forEach((pt)=>{
-    if(!Array.isArray(pt.children)) pt.children=[];
-    const li=document.createElement('div'); li.className='point';
-
-    const numSpan=document.createElement('span');
-    numSpan.className='num';
-    numSpan.textContent='';
-
-    const input=document.createElement('input');
-    input.className='pt-input';
-    input.placeholder='Escribe…';
-    input.value=pt.text||'';
-    input.title=pt.text||'';
-    input.oninput=e=>{ pt.text=e.target.value; input.title=pt.text||''; save(); };
-
-    const actions=document.createElement('div');
-    actions.className='p-actions';
-
-    const toggle=document.createElement('button');
-    toggle.className='p-mini p-toggle';
-    toggle.title='Más opciones';
-    toggle.textContent='＋';
-
-    const extra=document.createElement('div');
-    extra.className='p-extra hide';
-
-    const bSub=document.createElement('button');
-    bSub.className='p-mini';
-    bSub.title='Subpunto';
-    bSub.textContent='＋';
-    bSub.onclick=()=>{
-      st._openBranches=true;
-      st._editingBranches=true;
-      pushSubPoint(pt);
-      save();
-      renderModules();
-    };
-
-    const bFlag=document.createElement('button');
-    bFlag.className='p-mini';
-    bFlag.title='Bandera';
-    bFlag.textContent='🚩';
-    bFlag.onclick=()=>{
-      st._openBranches=true;
-      st._editingBranches=true;
-      openProcPicker(pid=>{
-        pt.link={pid};
-        save();
-        renderModules();
-      });
-    };
-
-    const bDel=document.createElement('button');
-    bDel.className='p-mini';
-    bDel.title='Borrar';
-    bDel.textContent='🗑';
-    bDel.onclick=()=>{
-      st._openBranches=true;
-      st._editingBranches=true;
-      delFromArray(arr,pt.id);
-      save();
-      renderModules();
-    };
-
-    extra.appendChild(bSub);
-    extra.appendChild(bFlag);
-    extra.appendChild(bDel);
-
-    toggle.onclick=()=>{
-      st._openBranches=true;
-      st._editingBranches=true;
-      extra.classList.toggle('hide');
-    };
-
-    actions.appendChild(toggle);
-    actions.appendChild(extra);
-
-    li.appendChild(numSpan);
-    li.appendChild(input);
-    li.appendChild(actions);
-
-    if(pt.link?.pid){
-      const dest=currentProcesses().find(x=>x.id===pt.link.pid);
-      if(dest){
-        const pc=document.createElement('span'); pc.className='chip'; pc.style.background=dest.color; pc.style.marginLeft='.25rem';
-        pc.innerHTML=`→ <small>${dest.name}</small>`;
-        li.appendChild(pc);
-      }
-    }
-
-    list.appendChild(li);
-
-    const kids=document.createElement('div'); kids.className='children';
-    pt.children.forEach((ch)=>{
-      const cli=document.createElement('div'); cli.className='point';
-
-      const cNumSpan=document.createElement('span');
-      cNumSpan.className='num';
-      cNumSpan.textContent='';
-
-      const cInput=document.createElement('input');
-      cInput.className='pt-input';
-      cInput.placeholder='Subpunto…';
-      cInput.value=ch.text||'';
-      cInput.title=ch.text||'';
-      cInput.oninput=e=>{ ch.text=e.target.value; cInput.title=ch.text||''; save(); };
-
-      const cActions=document.createElement('div');
-      cActions.className='p-actions';
-
-      const cToggle=document.createElement('button');
-      cToggle.className='p-mini p-toggle';
-      cToggle.title='Más opciones';
-      cToggle.textContent='＋';
-
-      const cExtra=document.createElement('div');
-      cExtra.className='p-extra hide';
-
-      const cbFlag=document.createElement('button');
-      cbFlag.className='p-mini';
-      cbFlag.title='Bandera';
-      cbFlag.textContent='🚩';
-      cbFlag.onclick=()=>{
-        st._openBranches=true;
-        st._editingBranches=true;
-        openProcPicker(pid=>{
-          ch.link={pid};
-          save();
-          renderModules();
-        });
-      };
-
-      const cbDel=document.createElement('button');
-      cbDel.className='p-mini';
-      cbDel.title='Borrar';
-      cbDel.textContent='🗑';
-      cbDel.onclick=()=>{
-        st._openBranches=true;
-        st._editingBranches=true;
-        const k=pt.children.indexOf(ch);
-        if(k>-1){
-          pt.children.splice(k,1);
-          save();
-          renderModules();
-        }
-      };
-
-      cExtra.appendChild(cbFlag);
-      cExtra.appendChild(cbDel);
-
-      cToggle.onclick=()=>{
-        st._openBranches=true;
-        st._editingBranches=true;
-        cExtra.classList.toggle('hide');
-      };
-
-      cActions.appendChild(cToggle);
-      cActions.appendChild(cExtra);
-
-      cli.appendChild(cNumSpan);
-      cli.appendChild(cInput);
-      cli.appendChild(cActions);
-
-      if(ch.link?.pid){
-        const dest=currentProcesses().find(x=>x.id===ch.link.pid);
-        if(dest){
-          const cc=document.createElement('span'); cc.className='chip'; cc.style.background=dest.color; cc.innerHTML=`→ <small>${dest.name}</small>`;
-          cli.appendChild(cc);
-        }
-      }
-
-      kids.appendChild(cli);
-    });
-
-    list.appendChild(kids);
-  });
-
-  wrap.appendChild(list);
-  return wrap;
-}
-
-/* ===== Paso ===== */
-function stepRow(p,m,st,index){
-  const row=document.createElement('div');
-
-  const sc=document.createElement('div'); sc.className='step';
-  sc.innerHTML=`
-    <div class="bubble">${index+1}</div>
-    <textarea class="title" rows="1"></textarea>
-    <div class="minis">
-      <button class="mini" data-act="menu-toggle" title="Opciones de paso">✏️</button>
-    </div>`;
-  sc.style.setProperty('--proc',p.color);
-  sc.addEventListener('click', (e)=>{
-    if(e.target.closest('.mini') || e.target.classList.contains('title')) return;
-    sc.closest('.steps').querySelectorAll('.step').forEach(s=>s.classList.remove('selected'));
-    sc.classList.add('selected');
-  });
-
-  const titleInput = sc.querySelector('.title');
-  titleInput.value = st.title || '';
-  titleInput.title = st.title || '';
-  autoResize(titleInput);
-  titleInput.addEventListener('input', e=>{
-    st.title = e.target.value;
-    titleInput.title = st.title || '';
-    autoResize(titleInput);
-    save();
-  });
-
-  const menu=document.createElement('div');
-  menu.className='step-menu hide';
-  menu.innerHTML=`
-    <button data-act="menu-flag" title="Bandera proceso">🚩</button>
-    <button data-act="menu-branches" title="SÍ / NO">❓</button>
-    <button data-act="menu-detail" title="Detalle del paso">📝</button>
-    <button data-act="menu-delete" title="Eliminar paso">🗑</button>
-    <button data-act="menu-link" title="Adjuntar enlace">🔗</button>
-    <button data-act="menu-doc"  title="Adjuntar documento">📎</button>
-  `;
-  sc.appendChild(menu);
-
-  const stepDetail=document.createElement('div');
-  stepDetail.className='step-detail'+(st._openDetailStep?'':' hide');
-  stepDetail.innerHTML=`<textarea placeholder="Detalle del paso…">${st.detail||''}</textarea>`;
-  const sdTa = stepDetail.querySelector('textarea');
-  sdTa.title = st.detail || '';
-  sdTa.oninput = e=>{ st.detail = e.target.value; sdTa.title=st.detail||''; save(); };
-
-  if(!Array.isArray(st.links)) st.links=[];
-  if(!Array.isArray(st.docs))  st.docs=[];
-
-  const miniMenu = sc.querySelector('[data-act="menu-toggle"]');
-
-  function doFlag(){
-    openProcPicker(pid=>{ st.link={pid}; save(); renderModules(); });
-  }
-  function doBranches(){
-    const yesHas = (st.yes && st.yes.length>0) || (st.yesLink && st.yesLink.pid);
-    const noHas  = (st.no  && st.no.length>0)  || (st.noLink  && st.noLink.pid);
-    const hasAny = yesHas || noHas;
-
-    if(st._editingBranches){
-      st._editingBranches=false;
-      st._openBranches=false;
-    }else{
-      st._editingBranches=true;
-      st._openBranches=true;
-      if(!hasAny){
-        if(!Array.isArray(st.yes)) st.yes=[];
-        if(st.yes.length===0) pushPoint(st.yes);
-      }
-    }
-    save();
-    renderModules();
-  }
-  function doDetail(){
-    st._openDetailStep = !st._openDetailStep;
-    save();
-    renderModules();
-  }
-  function doDelete(){
-    m.steps.splice(index,1);
-    save();
-    renderModules();
-  }
-
-  miniMenu.onclick=(ev)=>{
-    ev.stopPropagation();
-    menu.classList.toggle('hide');
-  };
-
-  const menuFlag     = menu.querySelector('[data-act="menu-flag"]');
-  const menuBranches = menu.querySelector('[data-act="menu-branches"]');
-  const menuDetail   = menu.querySelector('[data-act="menu-detail"]');
-  const menuDelete   = menu.querySelector('[data-act="menu-delete"]');
-  const menuLink     = menu.querySelector('[data-act="menu-link"]');
-  const menuDoc      = menu.querySelector('[data-act="menu-doc"]');
-
-  menuFlag.onclick = ()=>{ doFlag(); menu.classList.add('hide'); };
-  menuBranches.onclick = ()=>{ doBranches(); menu.classList.add('hide'); };
-  menuDetail.onclick = ()=>{ doDetail(); menu.classList.add('hide'); };
-  menuDelete.onclick = ()=>{ if(confirm('¿Eliminar paso?')) doDelete(); menu.classList.add('hide'); };
-
-  menuLink.onclick=()=>{
-    const url = prompt('Enlace a adjuntar (URL o referencia):', '');
-    if(url){
-      st.links.push(url);
-      miniMenu.title = `Opciones de paso (enlaces: ${st.links.length}, docs: ${st.docs.length})`;
-      save();
-    }
-    menu.classList.add('hide');
-  };
-  menuDoc.onclick=()=>{
-    pendingDocTarget = st;
-    const fp=document.getElementById('paFilePicker');
-    if(fp){
-      fp.value='';
-      fp.click();
-    }
-    menu.classList.add('hide');
-  };
-
-  if(st.links.length || st.docs.length){
-    miniMenu.title = `Opciones de paso (enlaces: ${st.links.length}, docs: ${st.docs.length})`;
-  }
-
-  row.appendChild(sc);
-
-  if(st.link?.pid){
-    const dest=currentProcesses().find(x=>x.id===st.link.pid);
-    if(dest){
-      const chip=document.createElement('div');
-      chip.className='chip'; chip.style.background=dest.color; chip.style.margin='3px 0 0 48px';
-      chip.innerHTML=`→ <small>Ir al proceso:</small> <strong>${dest.name}</strong>`;
-      row.appendChild(chip);
-    }
-  }
-
-  row.appendChild(stepDetail);
-
-  if(!Array.isArray(st.yes)) st.yes=[];
-  if(!Array.isArray(st.no))  st.no=[];
-
-  const yesHas = (st.yes && st.yes.length>0) || (st.yesLink && st.yesLink.pid);
-  const noHas  = (st.no  && st.no.length>0)  || (st.noLink  && st.noLink.pid);
-  const hasAny = yesHas || noHas;
-
-  const locked = sessionStorage.getItem('PA_PIN_OK')!=='1';
-
-  const branchesWrapper=document.createElement('div');
-  branchesWrapper.className='branches';
-  const branchesInner=document.createElement('div');
-  branchesInner.className='branches-inner';
-
-  if((locked && hasAny) || st._editingBranches){
-    if(st._editingBranches && !locked){
-      const collapse = document.createElement('div');
-      collapse.className='branch-collapse';
-      collapse.innerHTML='<span>ver menos</span><span>▲</span>';
-      collapse.onclick=()=>{
-        st._editingBranches=false;
-        st._openBranches=false;
-        save();
-        renderModules();
-      };
-      branchesWrapper.appendChild(collapse);
-    }
-
-    branchesInner.appendChild(branchBox(p,m,st,'no',index));
-    branchesInner.appendChild(branchBox(p,m,st,'yes',index));
-    branchesWrapper.appendChild(branchesInner);
-    row.appendChild(branchesWrapper);
-  }else if(hasAny){
-    const indicator = document.createElement('div');
-    indicator.className='branch-indicator';
-    indicator.innerHTML='<span>ver más</span><span>👇</span>';
-    indicator.onclick=()=>{
-      // En modo lectura también dejamos ver contenido, solo bloqueamos edición con PIN
-      st._editingBranches=true;
-      st._openBranches=true;
-      save();
-      renderModules();
-    };
-    row.appendChild(indicator);
-  }
-
-  return row;
-}
-
-/* ===== Subprocesos ===== */
-function modCard(p,m){
-  const card=document.createElement('div');
-  card.className='module';
-  if(m.isSub) card.classList.add('module-subchild');
-  card.style.setProperty('--proc',p.color);
-  card.dataset.mid = m.id;
-  card.dataset.pid = p.id;
-
-  const head=document.createElement('div'); head.className='mod-head';
-  head.style.setProperty('--proc',p.color);
-  head.innerHTML=`<input class="mod-title" value="${m.title}">
-    <select class="sel">${RESPONSABLES.map(r=>`<option ${m.responsable===r?'selected':''}>${r}</option>`).join('')}</select>
-    <input class="resp-extra" placeholder="Nombre otros…" value="${m.respOtro||''}" style="${m.responsable==='Otros'?'display:inline-block':'display:none'}">
-    <button class="pill" data-act="toggle-detail" aria-expanded="${m._openDetail?'true':'false'}">▾ Detalle</button>
-    <button class="pill" data-act="toggle-steps" aria-expanded="${m._openSteps===false?'false':'true'}">▾ Pasos</button>
-    <button class="pill" data-act="add-submodule">+ Sub/subproceso</button>
-    <button class="pill" data-act="add-step">+ Paso</button>
-    <button class="pill" data-act="close">${m.completed?'🎯 Cerrado':'🎯 Guardar'}</button>
-    <button class="pill" data-act="del">–</button>`;
-  const titleEl=head.querySelector('.mod-title');
-  titleEl.oninput=e=>{ m.title=e.target.value; titleEl.title=m.title||''; save(); };
-  titleEl.title = m.title || '';
-  titleEl.ondblclick=()=>{ m._openDetail=!m._openDetail; toggleBlock(det,m._openDetail); if(m._openDetail){ setTimeout(()=>det.querySelector('textarea').focus(),0);} save(); };
-
-  const selEl=head.querySelector('select');
-  const respExtra=head.querySelector('.resp-extra');
-  selEl.onchange=e=>{
-    m.responsable=e.target.value;
-    if(m.responsable==='Otros'){
-      respExtra.style.display='inline-block';
-    }else{
-      respExtra.style.display='none';
-    }
-    save();
-  };
-  respExtra.oninput=e=>{
-    m.respOtro=e.target.value;
-    save();
-  };
-
-  head.querySelector('[data-act="add-step"]').onclick=()=>{
-    m.steps.push(makeStep());
-    m._openSteps = true;
-    save();
-    renderModules();
-  };
-
-  head.querySelector('[data-act="toggle-detail"]').onclick=(ev)=>{
-    m._openDetail=!m._openDetail;
-    ev.currentTarget.setAttribute('aria-expanded', m._openDetail?'true':'false');
-    toggleBlock(det,m._openDetail);
-    if(m._openDetail){ setTimeout(()=>det.querySelector('textarea').focus(),0); }
-    save();
-  };
-  head.querySelector('[data-act="close"]').onclick=()=>{ m.completed=!m.completed; save(); renderModules(); };
-
-  head.querySelector('[data-act="del"]').onclick=()=>{
-    if(confirm('¿Eliminar subproceso, sus pasos y sub-subprocesos?')){
-      const dept=currentDept(); if(!dept) return;
-      const idToRemove = m.id;
-      dept.processes.forEach(proc=>{
-        if(!Array.isArray(proc.modules)) return;
-        proc.modules = proc.modules.filter(mod=>mod.id!==idToRemove && mod.parentId!==idToRemove);
-      });
-      save();
-      renderModules();
-    }
-  };
-
-  const btnSub = head.querySelector('[data-act="add-submodule"]');
-  if(btnSub){
-    if(m.isSub){
-      btnSub.style.display='none'; /* solo en subproceso principal */
-    }else{
-      btnSub.onclick=()=>{
-        const dept=currentDept(); if(!dept) return;
-        const proc = dept.processes.find(x=>x.id===p.id); if(!proc) return;
-        if(!Array.isArray(proc.modules)) proc.modules=[];
-        const idx = proc.modules.findIndex(x=>x.id===m.id);
-        const subModule = {
-          id:uid(),
-          title: (m.title || 'Subproceso') + ' - Sub',
-          responsable: m.responsable || RESPONSABLES[0],
-          respOtro: m.respOtro || '',
-          detail:'',
-          steps:[makeStep()],
-          completed:false,
-          _openDetail:false,
-          _openSteps:true,
-          isSub:true,
-          parentId:m.id
-        };
-        if(idx>-1){
-          proc.modules.splice(idx+1,0,subModule);
-        }else{
-          proc.modules.push(subModule);
-        }
-        save();
-        renderModules();
-      };
-    }
-  }
-
-  card.appendChild(head);
-
-  const det=document.createElement('div');
-  det.className='mod-detail'+(m._openDetail?'':' hide');
-  det.setAttribute('aria-hidden', m._openDetail ? 'false':'true');
-  det.innerHTML=`<textarea placeholder="Descripción del subproceso…">${m.detail||''}</textarea>`;
-  const mta=det.querySelector('textarea');
-  mta.title = m.detail || '';
-  mta.oninput=e=>{ m.detail=e.target.value; mta.title=m.detail||''; save(); };
-  card.appendChild(det);
-
-  const steps=document.createElement('div'); steps.className='steps';
-  steps.style.setProperty('--proc',p.color);
-  m.steps.forEach((st,idx)=>{
-    if(typeof st.detail === 'undefined') st.detail='';
-    if(typeof st._openDetailStep === 'undefined') st._openDetailStep=false;
-    if(typeof st._openBranches === 'undefined') st._openBranches=false;
-    if(typeof st._editingBranches === 'undefined') st._editingBranches=false;
-    if(!Array.isArray(st.yes)) st.yes=[];
-    if(!Array.isArray(st.no))  st.no=[];
-    if(!Array.isArray(st.links)) st.links=[];
-    if(!Array.isArray(st.docs))  st.docs=[];
-    steps.appendChild(stepRow(p,m,st,idx));
-  });
-  card.appendChild(steps);
-
-  if(m._openSteps === false){
-    hideBlock(steps);
-  }else{
-    showBlock(steps);
-  }
-  const btnSteps = head.querySelector('[data-act="toggle-steps"]');
-  if(btnSteps){
-    btnSteps.setAttribute('aria-expanded', m._openSteps===false?'false':'true');
-    btnSteps.onclick=(ev)=>{
-      const current = (m._openSteps === false) ? false : true;
-      const next = !current;
-      m._openSteps = next;
-      btnSteps.setAttribute('aria-expanded', next ? 'true' : 'false');
-      toggleBlock(steps, next);
-      save();
-      requestAnimationFrame(()=>{ layoutAllSteps(); drawAllFlows(); });
-    };
-  }
-
-  if(m.completed){
-    const d=document.createElement('span'); d.className='badge-diana'; d.textContent='🎯';
-    head.appendChild(d);
-  }
-  return card;
-}
-
-/* ===== Render derecha ===== */
-function renderModules(){
-  const box=document.getElementById('modules'); if(!box) return;
-  box.innerHTML='';
-  const dept=currentDept(); if(!dept) return;
-  if(!Array.isArray(dept.processes)) dept.processes=[];
-  let p=findProcessById(activePid) || dept.processes[0];
-  if(!p){ activePid=null; return; }
-  activePid=p.id;
-  if(!Array.isArray(p.modules)) p.modules=[];
-  p.modules.forEach(m=> box.appendChild(modCard(p,m)));
-
-  requestAnimationFrame(()=>{ layoutAllSteps(); drawAllFlows(); });
-}
-
-/* ===== Acciones globales ===== */
-function createModuleForProcess(pid,titleOverride){
-  const dept=currentDept(); if(!dept) return null;
-  if(!Array.isArray(dept.processes)) dept.processes=[];
-  const p=dept.processes.find(x=>x.id===pid); if(!p) return null;
-  if(!Array.isArray(p.modules)) p.modules=[];
-  const defaultTitle = titleOverride || (p.name ? `${p.name} - Pasos` : 'Nuevo subproceso');
-  const m={
-    id:uid(),
-    title:defaultTitle,
-    responsable:RESPONSABLES[0],
-    respOtro:'',
-    detail:'',
-    steps:[makeStep()],
-    completed:false,
-    _openDetail:false,
-    _openSteps:true
-  };
-  p.modules.push(m); save(); renderModules(); return m;
-}
-function addProcess(){
-  const dept=currentDept();
-  if(!dept){
-    alert('Primero crea un departamento con "Departamentos+"');
-    return;
-  }
-  if(!Array.isArray(dept.processes)) dept.processes=[];
-  const color=colors[dept.processes.length%colors.length];
-  const p={id:uid(),name:'Nuevo proceso',color,detail:'',modules:[],_openDetail:false};
-  dept.processes.push(p); activePid=p.id; save(); render();
-}
-function addStepGlobal(){
-  const dept=currentDept();
-  if(!dept){ alert('Crea un departamento y un proceso'); return; }
-  if(!Array.isArray(dept.processes) || !dept.processes.length){ alert('Primero crea un proceso'); return; }
-  let p=findProcessById(activePid) || dept.processes[dept.processes.length-1];
-  if(!p){ p=dept.processes[0]; }
-  if(!p) return;
-  if(!Array.isArray(p.modules) || !p.modules.length){
-    createModuleForProcess(p.id, `${p.name} - Pasos`);
-  }
-  let m=p.modules[p.modules.length-1];
-  if(!m) m=createModuleForProcess(p.id, `${p.name} - Pasos`);
-  m.steps.push(makeStep());
-  m._openSteps = true;
-  save();
-  renderModules();
-}
-function addDept(){
-  const name=prompt('Nombre del nuevo departamento:','');
-  if(!name) return;
-  const dId=uid();
-  state.departments.push({
-    id:dId,
-    name:name,
-    description:'',
-    _openDesc:false,
-    processes:[]
-  });
-  state.activeDeptId=dId;
-  activePid=null;
-  save();
-  render();
-}
-
-/* ===== Render maestro ===== */
-function render(){
-  renderDeptSelect();
-  renderDeptInfo();
-  renderProcesses();
-  renderModules();
-  if (window.applyPinLockUI) window.applyPinLockUI();
-}
-
-/* ===== Boot ===== */
-load(); document.getElementById('stamp').textContent='Última actualización '+stamp();
-window.applyPinLockUI = window.applyPinLockUI || function(){}; 
-render();
-
-document.getElementById('btnAddProcess').onclick=addProcess;
-document.getElementById('btnAddSubprocPaso').onclick=()=>{
-  const dept=currentDept();
-  if(!dept){alert('Crea un departamento y un proceso');return;}
-  if(!Array.isArray(dept.processes) || !dept.processes.length){alert('Crea un proceso');return;}
-  const p=findProcessById(activePid) || dept.processes[0];
-  if(!p){alert('Crea un proceso');return;}
-  createModuleForProcess(p.id,'Nuevo subproceso');
+import React, { useState } from "react";
+
+// =====================
+// Tipos
+// =====================
+
+type Visit = {
+  id: number;
+  fecha: string; // dd/mm/aaaa o aaaa-mm-dd
+  responsable: "" | "Sonia" | "Ary Rojas";
+  excelName?: string; // nombre del archivo adjunto (solo nombre)
+  hit?: "" | "Sí" | "No"; // HIT conseguido en la visita (sí/no)
+  aar?: number | null; // % AAR de esa visita
+  checklist?: number | null; // % cumplimiento checklist en esa visita
 };
-document.getElementById('btnAddStepGlobal').onclick=addStepGlobal;
-document.getElementById('btnSave').onclick=save;
 
-const deptSelectEl=document.getElementById('deptSelect');
-if(deptSelectEl){
-  deptSelectEl.addEventListener('change',e=>handleDeptChange(e.target.value));
+type Store = {
+  id: number;
+  raw: string; // línea original pegada
+  codigo: string;
+  propietario: string;
+  centro: string;
+  provincia: string;
+  correo: string;
+  centroRegional: string; // "delegado regional" en la UI
+  region: string;
+  responsableAudio: "" | "Sonia" | "Ary Rojas";
+  centroAAR: "" | "Sí" | "No";
+  visitas: Visit[]; // hasta 4 visitas
+};
+
+type ChecklistStage = {
+  etapa: string;
+  items: string[];
+};
+
+// =====================
+// Checklist horizontal
+// =====================
+
+const CHECKLIST: ChecklistStage[] = [
+  {
+    etapa: "HOLA",
+    items: [
+      "Espacio audio limpio, ordenado",
+      "Espéculos, olivas y cascos desinfectados",
+      "Acogida al cliente con una sonrisa, amable y cercana",
+      "Llamar al paciente por su nombre",
+      "Acompañar al paciente al gabinete para la revisión auditiva",
+      "Confirmar motivo de visita",
+    ],
+  },
+  {
+    etapa: "SOY ÚNICO",
+    items: [
+      "Abrir ficha y rellenar RGPD completa (incluidos checks comerciales)",
+      "Realizar anamnesis HACE (Hábitos, Antecedentes, Clínica, Expectativas)",
+      "Anotar al menos 2 expectativas/necesidades concretas",
+      "Recoger entorno sonoro y situaciones clave para el paciente",
+    ],
+  },
+  {
+    etapa: "MI AUDICIÓN",
+    items: [
+      "Explicar brevemente cada prueba y confirmar comprensión",
+      "Evaluar ambos oídos con videotoscopia y explicar procedimiento",
+      "Realizar timpanometría y explicar procedimiento",
+      "Realizar vía aérea y vía ósea explicando cada paso",
+      "Mantener TV encendida para comunicar audio y mostrar resultados",
+    ],
+  },
+  {
+    etapa: "MI SOLUCIÓN",
+    items: [
+      "Resumir claramente los resultados y su impacto",
+      "Usar gráficas para apoyar la explicación (severidad, área audible, fonemas)",
+      "Vincular resultados con síntomas y quejas de la anamnesis",
+      "Hacer visible la pérdida auditiva con preguntas de implicación",
+      "Simular sonidos para mostrar la diferencia con/ sin ayuda",
+    ],
+  },
+  {
+    etapa: "PRUEBO",
+    items: [
+      "Explicar la prueba de capacidad de adaptación como prueba de salud",
+      "Escoger audífono según perfil en gama adecuada (Diamante)",
+      "Realizar programación inicial y ajustes según perfil",
+      "Explicar funcionamiento y mantenimiento para llevarse audífonos a casa",
+      "Entregar documentación (contrato, presupuesto, pasaporte)",
+    ],
+  },
+  {
+    etapa: "ME COMPROMETO",
+    items: [
+      "Trabajar resolución de objeciones con lenguaje positivo",
+      "Explicar facilidades de pago (Infinity / NextYear)",
+      "Detallar pack Serenidad y Serenidad + (compromisos)",
+      "Explicar en detalle pruebas HIT y su utilidad",
+      "Recomendar accesorios de conectividad y productos de higiene",
+    ],
+  },
+  {
+    etapa: "ME CONVIERTO EN FAN",
+    items: [
+      "Explicar llamadas de seguimiento y agenda futura",
+      "Reforzar logros y mejoras conseguidas en cada visita",
+      "Aplicar técnicas de Neuroventas en el seguimiento",
+    ],
+  },
+  {
+    etapa: "SEGUIMIENTO Y AGENDA",
+    items: [
+      "Registrar prueba en el sistema (Gio)",
+      "Llamar al día siguiente de la prueba para seguimiento",
+      "Agendar visita en 4 días para revisión",
+    ],
+  },
+  {
+    etapa: "COMUNICACIÓN DEL CENTRO",
+    items: [
+      "Comunicación del centro adecuada a su perfil",
+      "Revisión de comunicación en RRSS",
+      "Uniformidad adecuada",
+      "Contacto con locales vecinos y colaboraciones",
+      "Escaparate atractivo con novedad de producto",
+    ],
+  },
+  {
+    etapa: "AYUDAS Y ACUERDOS",
+    items: [
+      "Conocer y activar acuerdos con FIAPAS y ONCE",
+      "Revisar convenios locales (anotar detalle en observaciones)",
+      "Conocer ayudas de comunidad autónoma",
+      "Conocer ayudas generales +65 años y hasta 26 años",
+    ],
+  },
+  {
+    etapa: "INCENTIVOS",
+    items: ["Incentivos por derivación", "Incentivos por AAR"],
+  },
+  {
+    etapa: "FORMACIÓN",
+    items: [
+      "Onboarding Academy realizado",
+      "Formaciones obligatorias de centros exclusivos cumplimentadas",
+      "Formaciones obligatorias de centros audio realizadas",
+    ],
+  },
+];
+
+// =====================
+// Utilidades
+// =====================
+
+// Mapeos (los puedes ampliar si quieres auto-completar provincias)
+const CENTER_TO_PROVINCE: Record<string, string> = {};
+const CITY_TO_PROVINCE: Record<string, string> = {
+  NARON: "A CORUÑA (GALICIA)",
+  "NARÓN": "A CORUÑA (GALICIA)",
+  ONDARA: "ALICANTE (COMUNITAT VALENCIANA)",
+};
+
+function normalizarCentro(nombre: string): string {
+  return nombre.trim().toUpperCase();
 }
-const btnDeptAdd=document.getElementById('btnDeptAdd');
-if(btnDeptAdd){
-  btnDeptAdd.addEventListener('click',addDept);
+
+function createEmptyVisits(): Visit[] {
+  return [1, 2, 3, 4].map((id) => ({
+    id,
+    fecha: "",
+    responsable: "",
+    excelName: "",
+    hit: "",
+    aar: null,
+    checklist: null,
+  }));
 }
 
-window.addEventListener('resize',()=>requestAnimationFrame(()=>{layoutAllSteps();drawAllFlows();}));
+// Acepta dd/mm/aaaa y aaaa-mm-dd (para input type="date")
+function parseFecha(fecha: string): Date | null {
+  if (!fecha) return null;
 
-/* ===== Buscador ===== */
-function stepMatches(st, q){
-  if(!q) return true;
-  const ql = q.toLowerCase();
-  if((st.title||'').toLowerCase().includes(ql)) return true;
-  if((st.detail||'').toLowerCase().includes(ql)) return true;
-
-  const checkPoints = (list=[])=>{
-    for(const pt of list){
-      if((pt.text||'').toLowerCase().includes(ql)) return true;
-      if(Array.isArray(pt.children)){
-        for(const ch of pt.children){
-          if((ch.text||'').toLowerCase().includes(ql)) return true;
-        }
-      }
+  // dd/mm/aaaa
+  const regex1 = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  let match = fecha.match(regex1);
+  if (match) {
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    const d = new Date(year, month - 1, day);
+    if (
+      d.getFullYear() === year &&
+      d.getMonth() === month - 1 &&
+      d.getDate() === day
+    ) {
+      return d;
     }
-    return false;
+  }
+
+  // aaaa-mm-dd (formato nativo del calendario)
+  const regex2 = /^(\d{4})-(\d{2})-(\d{2})$/;
+  match = fecha.match(regex2);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const d = new Date(year, month - 1, day);
+    if (
+      d.getFullYear() === year &&
+      d.getMonth() === month - 1 &&
+      d.getDate() === day
+    ) {
+      return d;
+    }
+  }
+
+  return null;
+}
+
+function isValidFecha(fecha: string): boolean {
+  if (!fecha) return true;
+  return parseFecha(fecha) !== null;
+}
+
+function media(valores: (number | null | undefined)[]): number | null {
+  const nums = valores.filter(
+    (v): v is number => typeof v === "number" && !isNaN(v)
+  );
+  if (nums.length === 0) return null;
+  const total = nums.reduce((sum, v) => sum + v, 0);
+  return total / nums.length;
+}
+
+function porcentajeSi(valores: ("" | "Sí" | "No" | undefined)[]): number | null {
+  const valid = valores.filter((v) => v === "Sí" || v === "No");
+  if (valid.length === 0) return null;
+  const countSi = valid.filter((v) => v === "Sí").length;
+  return (countSi / valid.length) * 100;
+}
+
+function donutStyle(percent: number | null): React.CSSProperties {
+  const value = percent && percent > 0 ? Math.min(percent, 100) : 0;
+  const color = percent !== null && percent >= 85 ? "#16a34a" : "#dc2626"; // verde >=85, rojo <85
+  return {
+    background: `conic-gradient(${color} ${value * 3.6}deg, #e5e7eb 0deg)`,
+  };
+}
+
+function kpiBadgeClass(percent: number | null): string {
+  if (percent === null) return "bg-gray-200 text-gray-700";
+  if (percent >= 85) return "bg-green-100 text-green-800";
+  return "bg-red-100 text-red-700";
+}
+
+function delegadoColor(delegado: string): React.CSSProperties {
+  if (!delegado) return {};
+  let hash = 0;
+  const texto = delegado.trim().toUpperCase();
+  for (let i = 0; i < texto.length; i++) {
+    hash = (hash * 31 + texto.charCodeAt(i)) | 0;
+  }
+  const hue = (Math.abs(hash) % 360 + 180) % 360;
+  return {
+    backgroundColor: `hsl(${hue}, 75%, 90%)`,
+    color: `hsl(${hue}, 35%, 28%)`,
+  };
+}
+
+function inferProvincia(centro: string, provinciaExcel: string): string {
+  if (provinciaExcel && provinciaExcel.trim() !== "") {
+    return provinciaExcel.trim().toUpperCase();
+  }
+
+  const centroNorm = normalizarCentro(centro);
+
+  if (CENTER_TO_PROVINCE[centroNorm]) {
+    return CENTER_TO_PROVINCE[centroNorm];
+  }
+
+  const tokens = centroNorm
+    .split(/[,\-\(\)]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i];
+    if (CITY_TO_PROVINCE[token]) {
+      return CITY_TO_PROVINCE[token];
+    }
+  }
+
+  return "";
+}
+
+// =====================
+// Componente principal
+// =====================
+
+export default function App() {
+  const [pin, setPin] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [filterCodigo, setFilterCodigo] = useState("");
+  const [filterPropietario, setFilterPropietario] = useState("");
+  const [filterCentro, setFilterCentro] = useState("");
+  const [filterProvincia, setFilterProvincia] = useState("");
+  const [filterDelegado, setFilterDelegado] = useState("");
+  const [filterRegion, setFilterRegion] = useState("");
+  const [filterResponsableAudio, setFilterResponsableAudio] = useState("");
+  const [filterCentroAAR, setFilterCentroAAR] = useState("");
+  const [filterCorreo, setFilterCorreo] = useState("");
+
+  const [storesInput, setStoresInput] = useState("");
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+
+  // PIN: acepta mayúsculas/minúsculas y espacios, y funciona con botón y Enter
+  const handlePin = () => {
+    if (pin.trim().toUpperCase() === "AR4321") {
+      setAuthorized(true);
+    }
   };
 
-  if(checkPoints(st.yes||[])) return true;
-  if(checkPoints(st.no||[])) return true;
-  return false;
-}
-function moduleMatches(m, q){
-  if(!q) return true;
-  const ql = q.toLowerCase();
-  if((m.title||'').toLowerCase().includes(ql)) return true;
-  if((m.detail||'').toLowerCase().includes(ql)) return true;
-  if(Array.isArray(m.steps)){
-    for(const st of m.steps){
-      if(stepMatches(st, ql)) return true;
-    }
-  }
-  return false;
-}
-function processMatches(p, q){
-  if(!q) return true;
-  const ql = q.toLowerCase();
-  if((p.name||'').toLowerCase().includes(ql)) return true;
-  if((p.detail||'').toLowerCase().includes(ql)) return true;
-  if(Array.isArray(p.modules)){
-    for(const m of p.modules){
-      if(moduleMatches(m, ql)) return true;
-    }
-  }
-  return false;
-}
+  const handleApplyStores = () => {
+    if (!storesInput.trim()) return;
 
-document.getElementById('q').addEventListener('input',e=>{
-  const q = e.target.value.trim().toLowerCase();
+    const lines = storesInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
 
-  const dept=currentDept();
-  if(!dept) return;
-  if(!Array.isArray(dept.processes)) dept.processes=[];
+    const newStores: Store[] = lines.map((raw, index) => {
+      const parts = raw.split("\t");
+      const [
+        codigo = "",
+        propietario = "",
+        centro = "",
+        provincia = "",
+        correo = "",
+        centroRegional = "",
+      ] = parts;
 
-  document.querySelectorAll('.proc-item').forEach(el=>{
-    const pid = el.dataset.pid;
-    const p = dept.processes.find(x=>x.id===pid);
-    const visible = !q || (p && processMatches(p, q));
-    el.classList.toggle('hide', !visible);
-  });
+      const provinciaInferida = inferProvincia(centro, provincia);
 
-  const pActive = findProcessById(activePid) || dept.processes[0];
-  if(!pActive) return;
-
-  document.querySelectorAll('#modules .module').forEach(el=>{
-    const mid = el.dataset.mid;
-    const m = (pActive.modules||[]).find(x=>x.id===mid);
-    const visible = !q || (m && moduleMatches(m, q));
-    el.classList.toggle('hide', !visible);
-  });
-});
-
-/* ===== File picker docs ===== */
-const filePicker = document.getElementById('paFilePicker');
-if(filePicker){
-  filePicker.addEventListener('change', e=>{
-    if(!pendingDocTarget) return;
-    const files = Array.from(e.target.files || []);
-    files.forEach(f=>{
-      if(!pendingDocTarget.docs) pendingDocTarget.docs=[];
-      pendingDocTarget.docs.push(f.name);
-    });
-    pendingDocTarget=null;
-    save();
-  });
-}
-
-/* =======================================================================
-   UTILIDADES (PIN, PDF, HTML, NUBE)
-   ======================================================================= */
-(function(){
-  const PIN_CODE = 'AR4321';
-  const SNAP_KEY = 'PA_SNAPSHOT_V1';
-
-  const toast = (() => {
-    const n = document.createElement('div');
-    n.className='pa-toast'; n.id='paToast';
-    document.body.appendChild(n);
-    const fn = (msg)=>{ n.textContent=msg; n.classList.add('show'); setTimeout(()=>n.classList.remove('show'),2200); };
-    window.paToastFn = fn;
-    return fn;
-  })();
-
-  const fileStamp = () => { const d=new Date(),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}`; };
-
-  const pinBtn  = document.getElementById('paPinBtn');
-  const pdfBtn  = document.getElementById('paPdfBtn');
-  const htmlBtn = document.getElementById('paHtmlBtn');
-  const saveBtn = document.getElementById('paSaveCloud');
-
-  window.applyPinLockUI = function applyPinLockUI(){
-    const locked = sessionStorage.getItem('PA_PIN_OK')!=='1';
-    document.body.classList.toggle('pa-locked', locked);
-
-    ['#btnAddProcess','#btnAddStepGlobal','#btnAddSubprocPaso','#btnDeptAdd'].forEach(sel=>{
-      const b=document.querySelector(sel);
-      if(b){ b.classList.toggle('lock-block', locked); b.toggleAttribute('disabled', locked); }
+      return {
+        id: index + 1,
+        raw,
+        codigo,
+        propietario,
+        centro,
+        provincia: provinciaInferida,
+        correo,
+        centroRegional,
+        region: "",
+        responsableAudio: "",
+        centroAAR: "",
+        visitas: createEmptyVisits(),
+      };
     });
 
-    document.querySelectorAll('.proc-item .icon-btn[title="Renombrar"], .proc-item .icon-btn[title="Eliminar"]').forEach(b=>{
-      b.classList.toggle('lock-block', locked);
-      b.toggleAttribute('disabled', locked);
-    });
-
-    // campos de texto en solo lectura, pero clicables (se pueden seleccionar / copiar)
-    document.querySelectorAll('.title, .mod-title, textarea, .pt-input').forEach(el=>{
-      el.toggleAttribute('readonly', locked);
-      el.classList.toggle('is-readonly', locked);
-    });
-
-    // sólo se bloquean los select de responsable; el selector de departamento SI se puede usar
-    document.querySelectorAll('select.sel').forEach(s=>{
-      s.toggleAttribute('disabled', locked);
-      s.classList.toggle('is-readonly', locked);
-    });
-
-    document.querySelectorAll('[data-act="add-step"], [data-act="close"], [data-act="del"], [data-act="add-submodule"]').forEach(b=>{
-      b.classList.toggle('lock-block', locked);
-      b.toggleAttribute('disabled', locked);
-    });
-
-    document.querySelectorAll('.branch .p-mini').forEach(b=>{
-      b.classList.toggle('lock-block', locked);
-      b.toggleAttribute('disabled', locked);
-    });
+    setStores(newStores);
+    setSelectedStoreId(newStores.length > 0 ? newStores[0].id : null);
   };
 
-  // BLOQUEO SÓLO PARA AÑADIR / BORRAR / EDITAR
-  function cancelIfLocked(e){
-    const locked = sessionStorage.getItem('PA_PIN_OK')!=='1';
-    if(!locked) return;
-    const t = e.target.closest('button, textarea, select, .title, .mod-title, .pt-input');
-    if(!t) return;
+  const filteredStores = stores.filter((store) => {
+    const textoGlobal = `${store.codigo} ${store.propietario} ${store.centro} ${store.provincia} ${store.centroRegional} ${store.correo}`.toLowerCase();
 
-    // Sólo bloqueamos acciones de EDICIÓN, BORRADO o AÑADIDO
-    if(
-      t.matches('#btnAddProcess, #btnAddStepGlobal, #btnAddSubprocPaso, #btnDeptAdd') ||
-      t.matches('.proc-item .icon-btn[title="Renombrar"], .proc-item .icon-btn[title="Eliminar"]') ||
-      t.matches('[data-act="add-step"], [data-act="close"], [data-act="del"], [data-act="add-submodule"]') ||
-      t.matches('.branch .p-mini') ||
-      t.matches('.dept-edit-menu button[data-act="edit"], .dept-edit-menu button[data-act="delete"]')
-    ){
-      e.stopPropagation();
-      e.preventDefault();
-      toast('Modo lectura: bloqueado por PIN');
-    }
-    // Se permiten: desplegar/plegar, ver detalle, cambiar departamento, hacer scroll y seleccionar texto.
-  }
-  document.addEventListener('click', cancelIfLocked, true);
-  document.addEventListener('input', cancelIfLocked, true);
-  document.addEventListener('change', cancelIfLocked, true);
+    if (search && !textoGlobal.includes(search.toLowerCase())) return false;
 
-  const mo = new MutationObserver(()=>applyPinLockUI());
-  mo.observe(document.body,{childList:true,subtree:true});
+    if (
+      filterCodigo &&
+      !store.codigo.toLowerCase().includes(filterCodigo.toLowerCase())
+    )
+      return false;
 
-  function printAll(){
-    const opened=[];
-    document.querySelectorAll('.proc-detail, .mod-detail, .branches, .step-detail, .dept-desc, details').forEach(b=>{
-      const wasHidden = (b.classList && (b.classList.contains('hide') || b.style.display==='none')) || (b.tagName==='DETAILS' && !b.open);
-      if(wasHidden){
-        if(b.tagName==='DETAILS') b.open=true; else showBlock(b);
-        opened.push(b);
-      }
-    });
-    const restore=()=>{ opened.forEach(h=>{ if(h.tagName==='DETAILS') h.open=false; else hideBlock(h); }); window.removeEventListener('afterprint',restore); };
-    window.addEventListener('afterprint',restore);
-    window.print();
-  }
+    if (
+      filterPropietario &&
+      !store.propietario.toLowerCase().includes(filterPropietario.toLowerCase())
+    )
+      return false;
 
-  function currentHTML(){
-    const clone=document.documentElement.cloneNode(true);
-    clone.querySelectorAll('#paToast').forEach(el=>el?.parentNode?.removeChild(el));
-    return '<!DOCTYPE html>\n'+clone.outerHTML;
-  }
+    if (
+      filterCentro &&
+      !store.centro.toLowerCase().includes(filterCentro.toLowerCase())
+    )
+      return false;
 
-  function downloadHTML(){
-    const blob = new Blob([currentHTML()],{type:'text/html'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=`PROCESOS-AUDIO_${fileStamp()}.html`;
-    document.body.appendChild(a); a.click(); a.remove();
-  }
+    if (
+      filterCorreo &&
+      !store.correo.toLowerCase().includes(filterCorreo.toLowerCase())
+    )
+      return false;
 
-  function saveToCloud(){
-    try{
-      localStorage.setItem(SNAP_KEY, JSON.stringify({when:Date.now(), html: currentHTML()}));
-      toast('Guardado en nube (local)');
-    }catch(e){ console.error(e); toast('No se pudo guardar'); }
-  }
+    if (
+      filterProvincia &&
+      !store.provincia.toLowerCase().includes(filterProvincia.toLowerCase())
+    )
+      return false;
 
-  function togglePin(){
-    if(sessionStorage.getItem('PA_PIN_OK')==='1'){
-      sessionStorage.removeItem('PA_PIN_OK');
-      pinBtn.classList.remove('locked');
-      applyPinLockUI();
-      toast('Edición bloqueada (vista lectura)');
-    }else{
-      const v=prompt('Introduce PIN para editar:');
-      if(v===PIN_CODE){ sessionStorage.setItem('PA_PIN_OK','1'); pinBtn.classList.add('locked'); applyPinLockUI(); toast('Edición habilitada'); }
-      else if(v!==null){ toast('PIN incorrecto'); }
-    }
-  }
+    if (
+      filterDelegado &&
+      !store.centroRegional.toLowerCase().includes(filterDelegado.toLowerCase())
+    )
+      return false;
 
-  pinBtn?.addEventListener('click', togglePin);
-  pdfBtn?.addEventListener('click',  printAll);
-  htmlBtn?.addEventListener('click', downloadHTML);
-  saveBtn?.addEventListener('click', saveToCloud);
+    if (
+      filterRegion &&
+      !store.region.toLowerCase().includes(filterRegion.toLowerCase())
+    )
+      return false;
 
-  if(sessionStorage.getItem('PA_PIN_OK')!=='1'){ applyPinLockUI(); }
-})();
-</script>
-</body>
-</html>
+    if (
+      filterResponsableAudio &&
+      !store.responsableAudio
+        .toLowerCase()
+        .includes(filterResponsableAudio.toLowerCase())
+    )
+      return false;
+
+    if (filterCentroAAR && store.centroAAR !== filterCentroAAR) return false;
+
+    return true;
+  });
+
+  const groupedStoresByDelegado: { delegado: string; stores: Store[] }[] = [];
+  const mapDelegado = new Map<string, Store[]>();
+  filteredStores.forEach((store) => {
+    const key = store.centroRegional || "Sin delegado";
+    const current = mapDelegado.get(key) || [];
+    current.push(store);
+    mapDelegado.set(key, current);
+  });
+  mapDelegado.forEach((storesGrupo, delegado) => {
+    groupedStoresByDelegado.push({ delegado, stores: storesGrupo });
+  });
+
+  // Opciones únicas para desplegables tipo Excel
+  const getUniqueSorted = (values: string[]) => {
+    const set = new Set(
+      values
+        .map((v) => (v || "").trim())
+        .filter((v) => v.length > 0)
+    );
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, "es", { sensitivity: "base" })
+    );
+  };
+
+  const opcionesCodigo = getUniqueSorted(stores.map((s) => s.codigo));
+  const opcionesPropietario = getUniqueSorted(stores.map((s) => s.propietario));
+  const opcionesCentro = getUniqueSorted(stores.map((s) => s.centro));
+  const opcionesProvincia = getUniqueSorted(stores.map((s) => s.provincia));
+  const opcionesCorreo = getUniqueSorted(stores.map((s) => s.correo));
+  const opcionesDelegado = getUniqueSorted(stores.map((s) => s.centroRegional));
+  const opcionesRegion = getUniqueSorted(stores.map((s) => s.region));
+  const opcionesRespAudio = getUniqueSorted(
+    stores.map((s) => s.responsableAudio)
+  );
+
+  const selectedStore =
+    stores.find((store) => store.id === selectedStoreId) || null;
+
+  const updateStoreField = <K extends keyof Store>(
+    id: number,
+    field: K,
+    value: Store[K]
+  ) => {
+    setStores((prev) =>
+      prev.map((store) =>
+        store.id === id ? { ...store, [field]: value } : store
+      )
+    );
+  };
+
+  const updateVisitField = <K extends keyof Visit>(
+    storeId: number,
+    visitId: number,
+    field: K,
+    value: Visit[K]
+  ) => {
+    setStores((prev) =>
+      prev.map((store) => {
+        if (store.id !== storeId) return store;
+        return {
+          ...store,
+          visitas: store.visitas.map((visit) =>
+            visit.id === visitId ? { ...visit, [field]: value } : visit
+          ),
+        };
+      })
+    );
+  };
+
+  // Métricas globales
+  const allVisits: Visit[] = stores.flatMap((s) => s.visitas);
+
+  const visitasValidasGlobal = allVisits.filter(
+    (v) => v.fecha && v.excelName && isValidFecha(v.fecha)
+  );
+
+  const totalVisitas = visitasValidasGlobal.length;
+
+  const totalTiendas = stores.length;
+  const tiendasConVisita = stores.filter((s) =>
+    s.visitas.some((v) => v.fecha && v.excelName && isValidFecha(v.fecha))
+  ).length;
+  const porcentajeTiendasVisitadas =
+    totalTiendas > 0 ? (tiendasConVisita / totalTiendas) * 100 : 0;
+
+  const checklistMedia = media(visitasValidasGlobal.map((v) => v.checklist));
+  const hitMedia = porcentajeSi(visitasValidasGlobal.map((v) => v.hit));
+
+  const visitasConAAR = visitasValidasGlobal.filter(
+    (v) => typeof v.aar === "number" && !isNaN(v.aar as number)
+  );
+  const conteoAAR = visitasConAAR.length;
+  const aarMedia = media(visitasConAAR.map((v) => v.aar));
+
+  const algunFechaInvalida = allVisits.some(
+    (v) => v.fecha && !isValidFecha(v.fecha)
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans">
+      {!authorized ? (
+        <div className="flex items-center justify-center h-screen">
+          <div className="bg-white p-10 rounded-2xl shadow-xl w-80">
+            <h2 className="text-xl font-bold text-center mb-4">
+              Acceso Plataforma
+            </h2>
+            <input
+              type="password"
+              className="w-full p-2 border rounded mb-4"
+              placeholder="Introduce PIN"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handlePin();
+                }
+              }}
+            />
+            <button
+              onClick={handlePin}
+              className="w-full bg-blue-600 text-white py-2 rounded-xl shadow"
+            >
+              Entrar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6">
+          {/* HEADER */}
+          <header className="bg-red-600 text-white p-5 rounded-2xl shadow flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🎧</span>
+              <h1 className="text-2xl font-bold">
+                Seguimiento de procesos de Audio
+              </h1>
+            </div>
+            <button className="bg-white text-red-600 px-4 py-2 rounded-xl shadow font-semibold">
+              Guardar
+            </button>
+          </header>
+
+          {/* MAPA CHECKLIST + DASHBOARD HORIZONTAL */}
+          <section className="mt-6 space-y-6">
+            {/* Mapa checklist */}
+            <div className="bg-white p-6 rounded-2xl shadow">
+              <h2 className="font-bold text-lg mb-2">
+                Mapa horizontal de checklist de visita
+              </h2>
+              <p className="text-gray-500 mb-4 text-sm">
+                Etapas del proceso de audio según el checklist oficial.
+              </p>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {CHECKLIST.map((stage) => (
+                  <div
+                    key={stage.etapa}
+                    className="min-w-[260px] max-w-xs bg-gray-50 border rounded-2xl px-4 py-3 flex-shrink-0"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-red-700">
+                        {stage.etapa}
+                      </span>
+                      <span className="text-[10px] text-gray-500">
+                        {stage.items.length} pts
+                      </span>
+                    </div>
+                    <ul className="space-y-1">
+                      {stage.items.map((item, idx) => (
+                        <li
+                          key={idx}
+                          className="text-[11px] text-gray-700 flex gap-1"
+                        >
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                          <span className="leading-tight">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dashboard horizontal por tienda */}
+            <div className="bg-white p-4 rounded-2xl shadow">
+              <h3 className="font-bold text-sm mb-3">
+                Dashboard horizontal por tienda (media de todos los Excel)
+              </h3>
+              {stores.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  Aún no hay tiendas cargadas. Pega el listado y añade visitas.
+                </p>
+              ) : (
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {stores.map((store) => {
+                    const visitasValidas = store.visitas.filter(
+                      (v) => v.fecha && v.excelName && isValidFecha(v.fecha)
+                    );
+                    const visitasCount = visitasValidas.length;
+                    const checklistMedioTienda = media(
+                      visitasValidas.map((v) => v.checklist)
+                    );
+                    const hitMedioTienda = porcentajeSi(
+                      visitasValidas.map((v) => v.hit)
+                    );
+
+                    return (
+                      <div
+                        key={store.id}
+                        className="min-w-[260px] max-w-xs bg-gray-50 rounded-2xl px-4 py-3 border flex-shrink-0 flex flex-col gap-2"
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <div>
+                            <p className="text-xs font-semibold">
+                              {store.centro || store.codigo || store.raw}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-full"
+                                style={delegadoColor(store.centroRegional)}
+                              >
+                                {store.provincia || "Provincia sin definir"}
+                              </span>
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-full"
+                                style={delegadoColor(store.centroRegional)}
+                              >
+                                {store.centroRegional
+                                  ? `Delegado: ${store.centroRegional}`
+                                  : "Sin delegado"}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-gray-500">
+                            {visitasCount} visita(s)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 mt-1">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700"
+                              style={donutStyle(checklistMedioTienda)}
+                            >
+                              <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
+                                <span>
+                                  {checklistMedioTienda !== null
+                                    ? `${checklistMedioTienda.toFixed(0)}%`
+                                    : "--"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-[10px]">
+                              <p className="font-semibold">Checklist</p>
+                              <p className="text-gray-500 leading-tight">
+                                % medio de checklist de todas las visitas.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 text-[10px] bg-white rounded-xl px-2 py-1 border flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold mb-0.5">HIT</p>
+                            <p className="text-gray-700">
+                              {hitMedioTienda !== null
+                                ? `${hitMedioTienda.toFixed(
+                                    0
+                                  )}% visitas con HIT = Sí`
+                                : "Sin datos de HIT"}
+                            </p>
+                          </div>
+                          <div className="text-right text-[9px] text-gray-500">
+                            <p>Total visitas válidas</p>
+                            <p>{visitasCount}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {algunFechaInvalida && (
+              <p className="text-xs text-red-500 mt-1">
+                Hay fechas con formato incorrecto. Usa el calendario o formato
+                <strong> dd/mm/aaaa</strong>.
+              </p>
+            )}
+          </section>
+
+          {/* LISTADO DE TIENDAS + DETALLE */}
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
+            {/* Lateral listado */}
+            <aside className="bg-white p-5 rounded-2xl shadow h-[70vh] overflow-auto">
+              <h3 className="font-bold text-lg mb-3">Listado de tiendas</h3>
+              <p className="text-xs text-gray-500 mb-2">
+                Pega el listado de tiendas desde Excel (una fila por línea).
+              </p>
+              <textarea
+                className="w-full p-2 border rounded mb-2 text-xs h-24"
+                placeholder={
+                  "CODIGO\tPROPIETARIO\tCENTRO\tPROVINCIA\tCORREO\tDELEGADO REGIONAL"
+                }
+                value={storesInput}
+                onChange={(e) => setStoresInput(e.target.value)}
+              />
+              <button
+                onClick={handleApplyStores}
+                className="mb-4 text-xs px-3 py-1 rounded-full bg-red-600 text-white font-semibold shadow"
+              >
+                Aplicar listado
+              </button>
+
+              {/* Buscador global */}
+              <input
+                type="text"
+                placeholder="Buscar por cualquier campo..."
+                className="w-full p-2 border rounded mb-3 text-xs"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+
+              {/* Filtros por campo con faldón rojo (estilo Excel) */}
+              <div className="bg-red-600 text-white rounded-2xl p-3 mb-3">
+                <p className="text-[11px] font-semibold mb-2">
+                  Filtros rápidos por columna (tipo Excel)
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
+                    value={filterCodigo}
+                    onChange={(e) => setFilterCodigo(e.target.value)}
+                  >
+                    <option value="">Código (todos)</option>
+                    {opcionesCodigo.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                    value={filterPropietario}
+                    onChange={(e) => setFilterPropietario(e.target.value)}
+                  >
+                    <option value="">Propietario (todos)</option>
+                    {opcionesPropietario.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[160px]"
+                    value={filterCentro}
+                    onChange={(e) => setFilterCentro(e.target.value)}
+                  >
+                    <option value="">Centro (todos)</option>
+                    {opcionesCentro.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                    value={filterProvincia}
+                    onChange={(e) => setFilterProvincia(e.target.value)}
+                  >
+                    <option value="">Provincia (todas)</option>
+                    {opcionesProvincia.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                    value={filterDelegado}
+                    onChange={(e) => setFilterDelegado(e.target.value)}
+                  >
+                    <option value="">Delegado (todos)</option>
+                    {opcionesDelegado.map((op) => (
+                      <option key={op} value={op}>
+                        {op || "Sin delegado"}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
+                    value={filterRegion}
+                    onChange={(e) => setFilterRegion(e.target.value)}
+                  >
+                    <option value="">Región (todas)</option>
+                    {opcionesRegion.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[150px]"
+                    value={filterResponsableAudio}
+                    onChange={(e) => setFilterResponsableAudio(e.target.value)}
+                  >
+                    <option value="">Resp. audio (todos)</option>
+                    {opcionesRespAudio.map((op) => (
+                      <option key={op} value={op}>
+                        {op}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
+                    value={filterCentroAAR}
+                    onChange={(e) => setFilterCentroAAR(e.target.value)}
+                  >
+                    <option value="">Centro AAR (todos)</option>
+                    <option value="Sí">Sí</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+              </div>
+
+              {filteredStores.length === 0 && (
+                <p className="text-xs text-gray-400">
+                  No hay tiendas cargadas o no coincide ninguna con los filtros.
+                </p>
+              )}
+
+              {groupedStoresByDelegado.map((grupo) => (
+                <div key={grupo.delegado} className="mb-3">
+                  <div
+                    className="text-[11px] font-semibold px-2 py-1 rounded-full inline-block mb-1"
+                    style={
+                      grupo.delegado === "Sin delegado"
+                        ? { backgroundColor: "#e5e7eb", color: "#374151" }
+                        : delegadoColor(grupo.delegado)
+                    }
+                  >
+                    {grupo.delegado === "Sin delegado"
+                      ? "Sin delegado asignado"
+                      : `Delegado: ${grupo.delegado}`}
+                  </div>
+                  {grupo.stores.map((store) => (
+                    <button
+                      key={store.id}
+                      type="button"
+                      onClick={() => setSelectedStoreId(store.id)}
+                      className={`w-full text-left border-b py-2 px-1 rounded hover:bg-red-50 transition ${
+                        selectedStoreId === store.id ? "bg-red-50" : ""
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">
+                          {store.centro || store.codigo || "Sin centro"}
+                        </span>
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full"
+                          style={delegadoColor(store.centroRegional)}
+                        >
+                          {store.provincia || "Provincia sin definir"}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-gray-500 flex justify-between mt-1">
+                        <span>{store.propietario || "Sin propietario"}</span>
+                        <span className="italic">
+                          {store.codigo || "Sin código"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </aside>
+
+            {/* Detalle de tienda */}
+            <main className="bg-white p-6 rounded-2xl shadow h-[70vh] flex flex-col">
+              <h3 className="text-xl font-bold mb-4">
+                Detalle de tienda
+                {selectedStore
+                  ? `: ${selectedStore.centro || selectedStore.codigo}`
+                  : ""}
+              </h3>
+
+              {!selectedStore ? (
+                <p className="text-gray-500 text-sm">
+                  Carga primero el listado de tiendas y selecciona una.
+                </p>
+              ) : (
+                <div className="flex-1 flex flex-col gap-6 overflow-auto pr-2">
+                  {/* Datos básicos */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-gray-50 border rounded-2xl p-4">
+                    <div>
+                      <p className="font-semibold mb-0.5">Código</p>
+                      <p>{selectedStore.codigo || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-0.5">Propietario</p>
+                      <p>{selectedStore.propietario || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-0.5">Centro</p>
+                      <p>{selectedStore.centro || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-0.5">Provincia</p>
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-full"
+                        style={delegadoColor(selectedStore.centroRegional)}
+                      >
+                        {selectedStore.provincia || "Provincia sin definir"}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-0.5">Correo</p>
+                      <p>{selectedStore.correo || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-0.5">Delegado regional</p>
+                      <span
+                        className="inline-block px-2 py-0.5 rounded-full"
+                        style={delegadoColor(selectedStore.centroRegional)}
+                      >
+                        {selectedStore.centroRegional || "Sin delegado"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Seguimiento general */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold mb-1">
+                        Región
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full p-2 border rounded text-sm"
+                        value={selectedStore.region}
+                        onChange={(e) =>
+                          updateStoreField(
+                            selectedStore.id,
+                            "region",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1">
+                        Responsable de audio (general)
+                      </label>
+                      <select
+                        className="w-full p-2 border rounded text-sm"
+                        value={selectedStore.responsableAudio}
+                        onChange={(e) =>
+                          updateStoreField(
+                            selectedStore.id,
+                            "responsableAudio",
+                            e.target.value as Store["responsableAudio"]
+                          )
+                        }
+                      >
+                        <option value="">Selecciona...</option>
+                        <option value="Sonia">Sonia</option>
+                        <option value="Ary Rojas">Ary Rojas</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold mb-1">
+                        Centro AAR
+                      </label>
+                      <div className="flex flex-col md:flex-row gap-4 items-start">
+                        <select
+                          className="w-full md:w-40 p-2 border rounded text-sm"
+                          value={selectedStore.centroAAR}
+                          onChange={(e) =>
+                            updateStoreField(
+                              selectedStore.id,
+                              "centroAAR",
+                              e.target.value as Store["centroAAR"]
+                            )
+                          }
+                        >
+                          <option value="">Selecciona...</option>
+                          <option value="Sí">Sí</option>
+                          <option value="No">No</option>
+                        </select>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold mb-1">
+                            Visitas (fecha + documento checklist, hasta 4)
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {selectedStore.visitas.map((visit) => (
+                              <div
+                                key={visit.id}
+                                className="border rounded-xl p-2 text-[11px] bg-gray-50"
+                              >
+                                <p className="font-semibold mb-1">
+                                  Visita {visit.id}
+                                </p>
+                                <input
+                                  type="date"
+                                  className={`w-full border rounded px-2 py-1 mb-2 ${
+                                    visit.fecha && !isValidFecha(visit.fecha)
+                                      ? "border-red-500 bg-red-50"
+                                      : ""
+                                  }`}
+                                  value={visit.fecha}
+                                  onChange={(e) =>
+                                    updateVisitField(
+                                      selectedStore.id,
+                                      visit.id,
+                                      "fecha",
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                                <label className="inline-flex items-center px-3 py-1 rounded-xl border cursor-pointer hover:bg-white">
+                                  <span className="text-[11px] font-semibold">
+                                    Adjuntar documento checklist
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv,.pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        updateVisitField(
+                                          selectedStore.id,
+                                          visit.id,
+                                          "excelName",
+                                          file.name
+                                        );
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                <p className="text-[10px] text-gray-500 mt-1 truncate">
+                                  {visit.excelName || "Sin archivo"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detalle KPIs visitas */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">
+                      Detalle de visitas (responsable, checklist, HIT y AAR)
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Indica quién visita, el % de checklist, si hubo HIT y el
+                      % AAR.
+                    </p>
+                    <div className="border rounded-2xl overflow-hidden">
+                      <div className="grid grid-cols-[40px,1.2fr,0.9fr,0.9fr,0.9fr] bg-gray-50 text-[11px] font-semibold px-3 py-2">
+                        <span>#</span>
+                        <span>Responsable audio</span>
+                        <span>Checklist %</span>
+                        <span>HIT (Sí/No)</span>
+                        <span>AAR %</span>
+                      </div>
+                      <div className="divide-y">
+                        {selectedStore.visitas.map((visit) => (
+                          <div
+                            key={visit.id}
+                            className="grid grid-cols-[40px,1.2fr,0.9fr,0.9fr,0.9fr] items-center px-3 py-2 text-[11px] gap-2"
+                          >
+                            <span className="font-semibold">V{visit.id}</span>
+                            <select
+                              className="border rounded px-2 py-1 text-[11px]"
+                              value={visit.responsable}
+                              onChange={(e) =>
+                                updateVisitField(
+                                  selectedStore.id,
+                                  visit.id,
+                                  "responsable",
+                                  e.target.value as Visit["responsable"]
+                                )
+                              }
+                            >
+                              <option value="">Selecciona...</option>
+                              <option value="Sonia">Sonia</option>
+                              <option value="Ary Rojas">Ary Rojas</option>
+                            </select>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              className="border rounded px-2 py-1 text-[11px]"
+                              placeholder="%"
+                              value={visit.checklist ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const num = val === "" ? null : Number(val);
+                                updateVisitField(
+                                  selectedStore.id,
+                                  visit.id,
+                                  "checklist",
+                                  isNaN(num as number) ? null : (num as number)
+                                );
+                              }}
+                            />
+                            <select
+                              className="border rounded px-2 py-1 text-[11px]"
+                              value={visit.hit ?? ""}
+                              onChange={(e) =>
+                                updateVisitField(
+                                  selectedStore.id,
+                                  visit.id,
+                                  "hit",
+                                  e.target.value as Visit["hit"]
+                                )
+                              }
+                            >
+                              <option value="">Selecciona...</option>
+                              <option value="Sí">Sí</option>
+                              <option value="No">No</option>
+                            </select>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              className="border rounded px-2 py-1 text-[11px]"
+                              placeholder="%"
+                              value={visit.aar ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const num = val === "" ? null : Number(val);
+                                updateVisitField(
+                                  selectedStore.id,
+                                  visit.id,
+                                  "aar",
+                                  isNaN(num as number) ? null : (num as number)
+                                );
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </main>
+          </div>
+
+          {/* LISTADO DE CENTROS (tabla final) */}
+          <section className="mt-10 bg-white p-6 rounded-2xl shadow">
+            <h3 className="font-bold text-lg mb-4 bg-red-600 text-white inline-block px-4 py-2 rounded-2xl">
+              LISTADO DE CENTROS
+            </h3>
+            {stores.length === 0 ? (
+              <p className="text-xs text-gray-500">
+                Aún no hay tiendas cargadas.
+              </p>
+            ) : (
+              <div className="overflow-auto">
+                <table className="min-w-full text-[11px] border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b">
+                      <th className="text-left px-2 py-2">Código</th>
+                      <th className="text-left px-2 py-2">Propietario</th>
+                      <th className="text-left px-2 py-2">Centro</th>
+                      <th className="text-left px-2 py-2">Provincia</th>
+                      <th className="text-left px-2 py-2">Correo</th>
+                      <th className="text-left px-2 py-2">Delegado regional</th>
+                      <th className="text-left px-2 py-2">Región</th>
+                      <th className="text-left px-2 py-2">Resp. audio</th>
+                      <th className="text-left px-2 py-2">Centro AAR</th>
+                      <th className="text-right px-2 py-2"># Visitas</th>
+                      <th className="text-right px-2 py-2">
+                        Checklist medio %
+                      </th>
+                      <th className="text-right px-2 py-2">
+                        HIT (visitas Sí %)
+                      </th>
+                      <th className="text-right px-2 py-2">AAR medio %</th>
+                    </tr>
+                    {/* Fila de filtros tipo Excel por columna */}
+                    <tr className="bg-gray-50 border-b">
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterCodigo}
+                          onChange={(e) => setFilterCodigo(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          {opcionesCodigo.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterPropietario}
+                          onChange={(e) => setFilterPropietario(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          {opcionesPropietario.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterCentro}
+                          onChange={(e) => setFilterCentro(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          {opcionesCentro.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterProvincia}
+                          onChange={(e) => setFilterProvincia(e.target.value)}
+                        >
+                          <option value="">Todas</option>
+                          {opcionesProvincia.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterCorreo}
+                          onChange={(e) => setFilterCorreo(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          {opcionesCorreo.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterDelegado}
+                          onChange={(e) => setFilterDelegado(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          {opcionesDelegado.map((op) => (
+                            <option key={op} value={op}>
+                              {op || "Sin delegado"}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterRegion}
+                          onChange={(e) => setFilterRegion(e.target.value)}
+                        >
+                          <option value="">Todas</option>
+                          {opcionesRegion.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterResponsableAudio}
+                          onChange={(e) =>
+                            setFilterResponsableAudio(e.target.value)
+                          }
+                        >
+                          <option value="">Todos</option>
+                          {opcionesRespAudio.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </th>
+                      <th className="px-2 py-1">
+                        <select
+                          className="border rounded px-1 py-0.5 w-full"
+                          value={filterCentroAAR}
+                          onChange={(e) => setFilterCentroAAR(e.target.value)}
+                        >
+                          <option value="">Todos</option>
+                          <option value="Sí">Sí</option>
+                          <option value="No">No</option>
+                        </select>
+                      </th>
+                      {/* Columnas de métricas sin filtro */}
+                      <th />
+                      <th />
+                      <th />
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStores.map((store) => {
+                      const visitasValidas = store.visitas.filter(
+                        (v) => v.fecha && v.excelName && isValidFecha(v.fecha)
+                      );
+                      const checklistMedioTienda = media(
+                        visitasValidas.map((v) => v.checklist)
+                      );
+                      const hitMedioTienda = porcentajeSi(
+                        visitasValidas.map((v) => v.hit)
+                      );
+                      const aarMedioTienda = media(
+                        visitasValidas.map((v) => v.aar)
+                      );
+
+                      return (
+                        <tr
+                          key={store.id}
+                          className="border-b hover:bg-gray-50"
+                        >
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.codigo || "-"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.propietario || "-"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.centro || "-"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            <span
+                              className="inline-block px-2 py-0.5 rounded-full"
+                              style={delegadoColor(store.centroRegional)}
+                            >
+                              {store.provincia || "-"}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.correo || "-"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            <span
+                              className="inline-block px-2 py-0.5 rounded-full"
+                              style={delegadoColor(store.centroRegional)}
+                            >
+                              {store.centroRegional || "Sin delegado"}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.region || "-"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.responsableAudio || "-"}
+                          </td>
+                          <td className="px-2 py-1 whitespace-nowrap">
+                            {store.centroAAR || "-"}
+                          </td>
+                          <td className="px-2 py-1 text-right">
+                            {visitasValidas.length}
+                          </td>
+                          <td className="px-2 py-1 text-right">
+                            {checklistMedioTienda !== null
+                              ? `${checklistMedioTienda.toFixed(0)}%`
+                              : "-"}
+                          </td>
+                          <td className="px-2 py-1 text-right">
+                            {hitMedioTienda !== null
+                              ? `${hitMedioTienda.toFixed(0)}%`
+                              : "-"}
+                          </td>
+                          <td className="px-2 py-1 text-right">
+                            {aarMedioTienda !== null
+                              ? `${aarMedioTienda.toFixed(0)}%`
+                              : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* KPIs globales */}
+                <div className="mt-4 text-[11px] text-gray-600 flex flex-wrap gap-3">
+                  <span>
+                    Total tiendas: <strong>{totalTiendas}</strong>
+                  </span>
+                  <span>
+                    Tiendas con al menos 1 visita:{" "}
+                    <strong>
+                      {tiendasConVisita} (
+                      {porcentajeTiendasVisitadas.toFixed(0)}%)
+                    </strong>
+                  </span>
+                  <span>
+                    Total visitas válidas: <strong>{totalVisitas}</strong>
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
+                      checklistMedia
+                    )}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-current/70" />
+                    <span>
+                      Checklist medio global:{" "}
+                      {checklistMedia !== null
+                        ? `${checklistMedia.toFixed(0)}%`
+                        : "-"}
+                    </span>
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
+                      hitMedia
+                    )}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-current/70" />
+                    <span>
+                      % aplicación HIT global:{" "}
+                      {hitMedia !== null ? `${hitMedia.toFixed(0)}%` : "-"}
+                    </span>
+                  </span>
+
+                  <span>
+                    Visitas con AAR informado: <strong>{conteoAAR}</strong>
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
+                      aarMedia
+                    )}`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-current/70" />
+                    <span>
+                      % AAR global:{" "}
+                      {aarMedia !== null ? `${aarMedia.toFixed(0)}%` : "-"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
