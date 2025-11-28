@@ -135,6 +135,23 @@
         },
       ];
 
+      // Aplanado 1..N para numeración y dashboard punto a punto
+      const CHECKLIST_POINTS = [];
+      const STAGE_OFFSETS = [];
+      let GLOBAL_POINT_INDEX = 0;
+      CHECKLIST.forEach((stage) => {
+        STAGE_OFFSETS.push(GLOBAL_POINT_INDEX);
+        stage.items.forEach((text) => {
+          GLOBAL_POINT_INDEX += 1;
+          CHECKLIST_POINTS.push({
+            index: GLOBAL_POINT_INDEX,
+            etapa: stage.etapa,
+            text,
+          });
+        });
+      });
+      const TOTAL_POINTS = CHECKLIST_POINTS.length;
+
       // =====================
       // Utilidades
       // =====================
@@ -148,6 +165,7 @@
           hit: "",
           checklist: null, // % global F90
           centroAAR: "",
+          pointValues: new Array(TOTAL_POINTS).fill(null), // 0/1 por criterio
         }));
       }
 
@@ -323,6 +341,31 @@
       }
 
       // =====================
+      // Punto a punto: cálculo de medias
+      // =====================
+
+      function computePointPercents(stores) {
+        const sums = new Array(TOTAL_POINTS).fill(0);
+        const counts = new Array(TOTAL_POINTS).fill(0);
+
+        stores.forEach((store) => {
+          (store.visitas || []).forEach((visit) => {
+            if (!Array.isArray(visit.pointValues)) return;
+            visit.pointValues.forEach((val, idx) => {
+              if (val === 0 || val === 1) {
+                sums[idx] += val;
+                counts[idx] += 1;
+              }
+            });
+          });
+        });
+
+        return sums.map((sum, idx) =>
+          counts[idx] ? (sum / counts[idx]) * 100 : null
+        );
+      }
+
+      // =====================
       // Centros exclusivos
       // =====================
 
@@ -400,6 +443,9 @@
           EXCLUSIVE_MONTHS[0].key
         );
 
+        // Dashboard punto a punto (hover)
+        const [hoverPointIdx, setHoverPointIdx] = useState(null);
+
         // Cargar de "nube" (localStorage)
         useEffect(() => {
           try {
@@ -425,6 +471,11 @@
                     checklist:
                       typeof v.checklist === "number" ? v.checklist : null,
                     centroAAR: v.centroAAR || "",
+                    pointValues:
+                      Array.isArray(v.pointValues) &&
+                      v.pointValues.length === TOTAL_POINTS
+                        ? v.pointValues
+                        : new Array(TOTAL_POINTS).fill(null),
                   })),
                   isExclusive,
                   exclusiveData: isExclusive
@@ -531,7 +582,7 @@
           );
         }
 
-        // ------- EXCEL Checklist (lee F90 de "PROCESOS BASICOS") -------
+        // ------- EXCEL Checklist (lee F90 de "PROCESOS BASICOS" y puntos F) -------
 
         function handleChecklistFileChange(storeId, visitId, event) {
           const file = event.target.files && event.target.files[0];
@@ -551,9 +602,20 @@
 
               if (isExcel && window.XLSX) {
                 const wb = XLSX.read(data, { type: "array" });
+
+                // hoja PROCESOS BASICOS / PROCESOS BÁSICOS / PROCESOS Y BASICOS...
+                const candidates = [
+                  "PROCESOS BASICOS",
+                  "PROCESOS BÁSICOS",
+                  "PROCESOS Y BASICOS",
+                  "PROCESOS Y BÁSICOS",
+                ];
                 let sheetName = wb.SheetNames[0];
-                if (wb.SheetNames.includes("PROCESOS BASICOS")) {
-                  sheetName = "PROCESOS BASICOS";
+                for (const name of candidates) {
+                  if (wb.Sheets[name]) {
+                    sheetName = name;
+                    break;
+                  }
                 }
                 const sheet = wb.Sheets[sheetName];
 
@@ -587,6 +649,26 @@
                   );
                   checklistFromF90Set = true;
                 }
+
+                // Punto a punto: col B texto, col F = 0 / 1
+                const pointValues = new Array(TOTAL_POINTS).fill(null);
+                let idx = 0;
+                for (let row = 1; row < 1000 && idx < TOTAL_POINTS; row++) {
+                  const cB = sheet["B" + row];
+                  const cF = sheet["F" + row];
+                  if (!cB || String(cB.v).trim() === "") continue;
+                  const rawF = cF ? cF.v : null;
+                  if (
+                    rawF === 0 ||
+                    rawF === 1 ||
+                    rawF === "0" ||
+                    rawF === "1"
+                  ) {
+                    pointValues[idx] = Number(rawF);
+                    idx++;
+                  }
+                }
+                updateVisitField(storeId, visitId, "pointValues", pointValues);
 
                 // Buscar HIT en el texto como apoyo
                 const csv = XLSX.utils.sheet_to_csv(sheet);
@@ -677,6 +759,11 @@
                     checklist:
                       typeof v.checklist === "number" ? v.checklist : null,
                     centroAAR: v.centroAAR || "",
+                    pointValues:
+                      Array.isArray(v.pointValues) &&
+                      v.pointValues.length === TOTAL_POINTS
+                        ? v.pointValues
+                        : new Array(TOTAL_POINTS).fill(null),
                   })),
                   isExclusive,
                   exclusiveData: isExclusive
@@ -990,6 +1077,29 @@
           );
         }
 
+        // ----------------------
+        // DASHBOARD PUNTO A PUNTO
+        // ----------------------
+
+        const pointPercents = computePointPercents(stores);
+        const hasPointData = pointPercents.some(
+          (p) => p !== null && !isNaN(p)
+        );
+
+        const chartPoints = pointPercents
+          .map((pct, idx) =>
+            pct === null
+              ? null
+              : {
+                  idx,
+                  num: CHECKLIST_POINTS[idx].index,
+                  etapa: CHECKLIST_POINTS[idx].etapa,
+                  text: CHECKLIST_POINTS[idx].text,
+                  pct,
+                }
+          )
+          .filter(Boolean);
+
         // =====================
         // RENDER
         // =====================
@@ -997,7 +1107,7 @@
         return (
           <div className="min-h-screen bg-gray-100 font-sans">
             {!authorized ? (
-              <div className="flex items-center justify-center h-screen">
+              <div className="while flex items-center justify-center h-screen">
                 <div className="bg-white p-10 rounded-2xl shadow-xl w-80">
                   <h2 className="text-xl font-bold text-center mb-4">
                     Acceso Plataforma
@@ -1063,9 +1173,11 @@
                     </h2>
                     <p className="text-gray-500 mb-4 text-sm">
                       Etapas del proceso de audio según el checklist oficial.
+                      Cada criterio está numerado y se usa en el dashboard
+                      punto a punto.
                     </p>
                     <div className="flex gap-4 overflow-x-auto pb-2">
-                      {CHECKLIST.map((stage) => (
+                      {CHECKLIST.map((stage, stageIdx) => (
                         <div
                           key={stage.etapa}
                           className="min-w-[260px] max-w-xs bg-gray-50 border rounded-2xl px-4 py-3 flex-shrink-0"
@@ -1079,15 +1191,24 @@
                             </span>
                           </div>
                           <ul className="space-y-1">
-                            {stage.items.map((item, idx) => (
-                              <li
-                                key={idx}
-                                className="text-[11px] text-gray-700 flex gap-1"
-                              >
-                                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                                <span className="leading-tight">{item}</span>
-                              </li>
-                            ))}
+                            {stage.items.map((item, idx) => {
+                              const num =
+                                STAGE_OFFSETS[stageIdx] + idx + 1;
+                              return (
+                                <li
+                                  key={idx}
+                                  className="text-[11px] text-gray-700 flex gap-1"
+                                >
+                                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                                  <span className="leading-tight">
+                                    <span className="font-semibold mr-1">
+                                      {num}.
+                                    </span>
+                                    {item}
+                                  </span>
+                                </li>
+                              );
+                            })}
                           </ul>
                         </div>
                       ))}
@@ -1269,6 +1390,147 @@
                       </p>
                     )}
                   </div>
+                </section>
+
+                {/* DASHBOARD PUNTO A PUNTO */}
+                <section className="mt-8 bg-white p-6 rounded-2xl shadow space-y-4">
+                  <h3 className="font-bold text-sm mb-1">
+                    Dashboard punto a punto del checklist
+                  </h3>
+                  <p className="text-[11px] text-gray-600 mb-3">
+                    Basado en los Excels adjuntos (hoja{" "}
+                    <strong>PROCESOS BASICOS / PROCESOS Y BASICOS</strong>,
+                    columna F: 0 = no aplica, 1 = aplica). Cada punto
+                    corresponde a un criterio numerado.
+                  </p>
+                  {!hasPointData ? (
+                    <p className="text-xs text-gray-500">
+                      Aún no hay datos punto a punto. Adjunta al menos un Excel
+                      checklist en alguna visita.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-gray-50 border rounded-2xl px-4 py-3">
+                        <svg
+                          viewBox="0 0 100 100"
+                          preserveAspectRatio="none"
+                          className="w-full h-40"
+                        >
+                          {/* eje X */}
+                          <line
+                            x1="0"
+                            y1="90"
+                            x2="100"
+                            y2="90"
+                            stroke="#9ca3af"
+                            strokeWidth="0.4"
+                          />
+                          {/* rejilla 25/50/75% */}
+                          {[25, 50, 75].map((p) => (
+                            <line
+                              key={p}
+                              x1="0"
+                              y1={90 - p * 0.8}
+                              x2="100"
+                              y2={90 - p * 0.8}
+                              stroke="#e5e7eb"
+                              strokeWidth="0.3"
+                              strokeDasharray="1 2"
+                            />
+                          ))}
+                          {/* línea */}
+                          {chartPoints.length > 1 && (
+                            <path
+                              d={
+                                "M " +
+                                chartPoints
+                                  .map((p, i) => {
+                                    const x =
+                                      (i /
+                                        (chartPoints.length - 1 || 1)) *
+                                      100;
+                                    const y = 90 - p.pct * 0.8;
+                                    return `${x} ${y}`;
+                                  })
+                                  .join(" L ")
+                              }
+                              fill="none"
+                              stroke="#ef4444"
+                              strokeWidth="0.7"
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                            />
+                          )}
+                          {/* puntos */}
+                          {chartPoints.map((p, i) => {
+                            const x =
+                              (i / (chartPoints.length - 1 || 1)) * 100;
+                            const y = 90 - p.pct * 0.8;
+                            const good = p.pct >= 85;
+                            const color = good ? "#16a34a" : "#dc2626";
+                            return (
+                              <g key={p.idx}>
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r={1.3}
+                                  fill={color}
+                                  stroke="#ffffff"
+                                  strokeWidth="0.4"
+                                  onMouseEnter={() =>
+                                    setHoverPointIdx(p.idx)
+                                  }
+                                  onMouseLeave={() =>
+                                    setHoverPointIdx(null)
+                                  }
+                                  style={{ cursor: "pointer" }}
+                                />
+                              </g>
+                            );
+                          })}
+                        </svg>
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                          <span>1</span>
+                          <span>{TOTAL_POINTS}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 border rounded-2xl px-4 py-3 text-[11px]">
+                        {hoverPointIdx === null ? (
+                          <p className="text-gray-500">
+                            Pasa el ratón por encima de cualquier punto para
+                            ver el criterio y su % medio de aplicación.
+                          </p>
+                        ) : (
+                          (() => {
+                            const pct = pointPercents[hoverPointIdx];
+                            const info = CHECKLIST_POINTS[hoverPointIdx];
+                            const good = pct >= 85;
+                            return (
+                              <div className="space-y-1">
+                                <p className="font-semibold">
+                                  Punto {info.index} · {info.etapa}
+                                </p>
+                                <p>{info.text}</p>
+                                <p>
+                                  % medio de aplicación:{" "}
+                                  <span
+                                    className={
+                                      good
+                                        ? "font-bold text-green-600"
+                                        : "font-bold text-red-600"
+                                    }
+                                  >
+                                    {pct.toFixed(1)}%
+                                  </span>
+                                </p>
+                              </div>
+                            );
+                          })()
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 {/* LISTADO DE CENTROS */}
@@ -1777,20 +2039,21 @@
                                                       </select>
                                                     </div>
                                                   </div>
+                                                  <p className="text-[10px] text-gray-500 mt-1">
+                                                    El Excel se lee de la hoja{" "}
+                                                    <strong>
+                                                      PROCESOS BASICOS / PROCESOS
+                                                      Y BASICOS
+                                                    </strong>
+                                                    : F90 = % checklist global,
+                                                    y columna F = 0/1 para
+                                                    cada criterio del dashboard
+                                                    punto a punto.
+                                                  </p>
                                                 </div>
                                               )
                                             )}
                                           </div>
-                                          <p className="text-[10px] text-gray-500">
-                                            Adjunta el Excel del checklist: la
-                                            plataforma lee automáticamente el %
-                                            global desde la celda{" "}
-                                            <strong>F90</strong> del libro{" "}
-                                            <strong>PROCESOS BASICOS</strong>.
-                                            Puedes ajustar manualmente
-                                            Checklist %, HIT y Centro AAR si es
-                                            necesario.
-                                          </p>
                                         </div>
                                       </td>
                                     </tr>
@@ -1914,7 +2177,6 @@
                             const isRowExpanded =
                               expandedExclusiveId === store.id;
 
-                            // Clase del botón "Ver / añadir" con manito y rojo al desplegar
                             const toggleBase =
                               "text-[10px] px-2 py-1 rounded-full border cursor-pointer transition-colors";
                             const toggleClass = isRowExpanded
