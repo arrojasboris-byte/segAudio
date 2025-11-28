@@ -15,7 +15,6 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
-
   <body class="bg-gray-100">
     <div id="root"></div>
 
@@ -136,23 +135,49 @@
         },
       ];
 
-      const TOTAL_CHECKLIST_ITEMS = CHECKLIST.reduce(
-        (sum, s) => sum + s.items.length,
-        0
-      );
+      // Centros exclusivos (por nombre normalizado)
+      const EXCLUSIVE_CENTERS_NAMES = [
+        "PAMPLONA C. EXCLUSIVO",
+        "CC LOS VALLES",
+        "SANTIAGO DE COMPOSTELA RUA DA ROSA",
+        "CC PLAZA DE LA ESTACIÓN",
+        "REINA DE MERCEDES",
+        "SANTANDER CC PEÑACASTILLO",
+        "TORRELAVEGA CARREFOUR CC",
+        "ZARAGOZA CALLE DELICIAS",
+      ];
 
-      const STAGE_OFFSETS = (() => {
-        const offsets = [];
-        let acc = 0;
-        for (const s of CHECKLIST) {
-          offsets.push(acc);
-          acc += s.items.length;
-        }
-        return offsets;
-      })();
+      // Meses para ventas / objetivos (Jul 2025 - Jul 2026)
+      const EXCLUSIVE_MONTHS = [
+        { key: "2025-07", label: "Jul 2025" },
+        { key: "2025-08", label: "Ago 2025" },
+        { key: "2025-09", label: "Sep 2025" },
+        { key: "2025-10", label: "Oct 2025" },
+        { key: "2025-11", label: "Nov 2025" },
+        { key: "2025-12", label: "Dic 2025" },
+        { key: "2026-01", label: "Ene 2026" },
+        { key: "2026-02", label: "Feb 2026" },
+        { key: "2026-03", label: "Mar 2026" },
+        { key: "2026-04", label: "Abr 2026" },
+        { key: "2026-05", label: "May 2026" },
+        { key: "2026-06", label: "Jun 2026" },
+        { key: "2026-07", label: "Jul 2026" },
+      ];
+
+      const ACTION_TYPES = [
+        "Stand",
+        "Mailing",
+        "Cashback",
+        "Azafata calle",
+        "Ruleta",
+        "Acción colectivo",
+        "Call center",
+        "Acción derivación tienda",
+        "Derivación colectivo",
+      ];
 
       // =====================
-      // Utilidades generales
+      // Tipos / modelos (JS simple)
       // =====================
 
       function createEmptyVisits() {
@@ -162,9 +187,9 @@
           responsable: "",
           excelName: "",
           hit: "",
-          checklist: null, // F90
+          checklist: null, // % global procedente de F90
           centroAAR: "",
-          pointFlags: null, // array de 0/1 por criterio F
+          stagePercents: null, // reservado para futuro por etapas
         }));
       }
 
@@ -180,16 +205,6 @@
           .split(/\s+/)
           .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
           .join(" ");
-      }
-
-      // normalización básica sin tildes para comparaciones
-      function normalizeBasic(str) {
-        return (str || "")
-          .toString()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
       }
 
       const CENTER_TO_PROVINCE = {};
@@ -329,96 +344,18 @@
         const visitas = store.visitas || [];
         const valores = visitas
           .map((v) => v.centroAAR)
-          .filter(
-            (v) => v === "Sí" || v === "No" || v === "En formación"
-          );
-        if (valores.length === 0) return store.centroAAR || "";
-        if (valores.includes("Sí")) return "Sí";
+          .filter((v) => v === "Sí" || v === "No" || v === "En formación");
+        if (valores.length === 0) return "";
         if (valores.includes("En formación")) return "En formación";
-        if (valores.includes("No")) return "No";
-        return "";
+        if (valores.includes("Sí")) return "Sí";
+        return "No";
       }
 
-      function computePointAverages(visits) {
-        const sums = Array(TOTAL_CHECKLIST_ITEMS).fill(0);
-        const counts = Array(TOTAL_CHECKLIST_ITEMS).fill(0);
-        visits.forEach((v) => {
-          if (!v.pointFlags || !Array.isArray(v.pointFlags)) return;
-          v.pointFlags.forEach((val, idx) => {
-            if (idx >= TOTAL_CHECKLIST_ITEMS) return;
-            if (val === 0 || val === 1) {
-              sums[idx] += val;
-              counts[idx] += 1;
-            }
-          });
-        });
-        return sums.map((sum, idx) =>
-          counts[idx] === 0 ? null : (sum / counts[idx]) * 100
+      function isExclusiveCenter(centro) {
+        const c = normalizarCentro(centro);
+        return EXCLUSIVE_CENTERS_NAMES.some((name) =>
+          c.includes(name.toUpperCase())
         );
-      }
-
-      // =====================
-      // Centros exclusivos (config fijo)
-      // =====================
-
-      const EXCLUSIVE_CENTER_PATTERNS = [
-        "FUENLABRADA PASEO DE LA ESTACION",
-        "FUENLABRADA PASEO DE LA ESTACIÓN",
-        "REINA MERCEDES",
-        "REINA DE MERCEDES",
-        "DELICIAS ZARAGOZA",
-        "ZARAGOZA CALLE DELICIAS",
-        "CC PLAZA DE LA ESTACION",
-        "PEÑACASTILLO",
-        "PENACASTILLO",
-        "TORRELAVEGA",
-        "LOS VALLES",
-        "SANTIAGO DE COMPOSTELA",
-        "PAMPLONA CENTRO EXCLUSIVO",
-        "PAMPLONA C. EXCLUSIVO",
-      ].map(normalizeBasic);
-
-      function isExclusiveStore(store) {
-        const centroNorm = normalizeBasic(store.centro);
-        return EXCLUSIVE_CENTER_PATTERNS.some((pat) =>
-          centroNorm.includes(pat)
-        );
-      }
-
-      const ACCION_TIPOS = [
-        "Stand",
-        "Mailing",
-        "Cashback",
-        "Azafata calle",
-        "Ruleta",
-        "Acción colectivo",
-        "Call center",
-        "Acción derivación tienda",
-        "Derivación colectivo",
-      ];
-
-      // Meses: desde JUL-2025 hasta JUL-2026
-      const MONTH_OPTIONS = [
-        { value: "2025-07", label: "Jul 2025" },
-        { value: "2025-08", label: "Ago 2025" },
-        { value: "2025-09", label: "Sep 2025" },
-        { value: "2025-10", label: "Oct 2025" },
-        { value: "2025-11", label: "Nov 2025" },
-        { value: "2025-12", label: "Dic 2025" },
-        { value: "2026-01", label: "Ene 2026" },
-        { value: "2026-02", label: "Feb 2026" },
-        { value: "2026-03", label: "Mar 2026" },
-        { value: "2026-04", label: "Abr 2026" },
-        { value: "2026-05", label: "May 2026" },
-        { value: "2026-06", label: "Jun 2026" },
-        { value: "2026-07", label: "Jul 2026" },
-      ];
-
-      function resultBadgeClass(pct) {
-        if (pct === null) return "bg-gray-100 text-gray-700";
-        return pct >= 100
-          ? "bg-green-100 text-green-800"
-          : "bg-red-100 text-red-700";
       }
 
       // =====================
@@ -447,8 +384,10 @@
         const [showCarga, setShowCarga] = useState(false);
         const [lastSavedAt, setLastSavedAt] = useState(null);
 
-        const [checklistViewValue, setChecklistViewValue] =
-          useState("global"); // "global" o id de centro como string
+        // datos de centros exclusivos (acciones, ventas, objetivos)
+        const [exclusiveData, setExclusiveData] = useState({});
+        const [expandedExclusiveId, setExpandedExclusiveId] =
+          useState(null);
 
         useEffect(() => {
           try {
@@ -460,38 +399,11 @@
                 ...s,
                 id: idx + 1,
                 centroRegional: normalizarDelegado(s.centroRegional || ""),
-                visitas:
-                  s.visitas && s.visitas.length
-                    ? s.visitas.map((v, vidx) => ({
-                        id: v.id ?? vidx + 1,
-                        fecha: v.fecha || "",
-                        responsable: v.responsable || "",
-                        excelName: v.excelName || "",
-                        hit: v.hit || "",
-                        checklist:
-                          typeof v.checklist === "number"
-                            ? v.checklist
-                            : v.checklist ?? null,
-                        centroAAR: v.centroAAR || "",
-                        pointFlags: v.pointFlags || null,
-                      }))
-                    : createEmptyVisits(),
-                exclusiveActions: (s.exclusiveActions || []).map(
-                  (a, aidx) => ({
-                    id: a.id ?? aidx + 1,
-                    tipo: a.tipo || "",
-                    ventasMes: a.ventasMes || a.mes || "",
-                    ventas: a.ventas || "",
-                    objetivoMes: a.objetivoMes || a.mes || "",
-                    objetivo: a.objetivo || "",
-                    fecha: a.fecha || "",
-                    derivaciones: a.derivaciones || "",
-                  })
-                ),
               }));
               setStores(normalizedStores);
             }
             if (parsed.lastSavedAt) setLastSavedAt(parsed.lastSavedAt);
+            if (parsed.exclusiveData) setExclusiveData(parsed.exclusiveData);
           } catch (e) {
             console.error("Error al cargar de la nube/localStorage", e);
           }
@@ -541,13 +453,13 @@
               responsableAudio: "",
               centroAAR: "",
               visitas: createEmptyVisits(),
-              exclusiveActions: [],
             };
           });
 
           setStores(newStores);
           setExpandedStoreId(null);
           setDashboardStoreId(null);
+          setExclusiveData({});
         }
 
         function updateStoreField(id, field, value) {
@@ -572,55 +484,70 @@
           );
         }
 
+        function ensureExclusiveEntry(storeId) {
+          return (
+            exclusiveData[storeId] || {
+              acciones: [],
+            }
+          );
+        }
+
         function addExclusiveAction(storeId) {
-          setStores((prev) =>
-            prev.map((store) => {
-              if (store.id !== storeId) return store;
-              const current = store.exclusiveActions || [];
-              const nextId =
-                (current.reduce(
-                  (m, a) => (a.id && a.id > m ? a.id : m),
-                  0
-                ) || 0) + 1;
-              const newAction = {
-                id: nextId,
-                tipo: "",
-                ventasMes: "",
-                ventas: "",
-                objetivoMes: "",
-                objetivo: "",
-                fecha: "",
-                derivaciones: "",
-              };
-              return {
-                ...store,
-                exclusiveActions: [...current, newAction],
-              };
-            })
-          );
+          setExclusiveData((prev) => {
+            const current = ensureExclusiveEntry(storeId);
+            const nueva = {
+              id: Date.now() + Math.random(),
+              tipo: "",
+              fecha: "",
+              derivaciones: "",
+              ventasMes: "",
+              ventasImporte: "",
+              objetivoMes: "",
+              objetivoImporte: "",
+            };
+            return {
+              ...prev,
+              [storeId]: {
+                ...current,
+                acciones: [...current.acciones, nueva],
+              },
+            };
+          });
         }
 
-        function updateExclusiveActionField(
-          storeId,
-          actionId,
-          field,
-          value
-        ) {
-          setStores((prev) =>
-            prev.map((store) => {
-              if (store.id !== storeId) return store;
-              return {
-                ...store,
-                exclusiveActions: (store.exclusiveActions || []).map(
-                  (act) =>
-                    act.id === actionId ? { ...act, [field]: value } : act
-                ),
-              };
-            })
-          );
+        function updateExclusiveAction(storeId, actionId, field, value) {
+          setExclusiveData((prev) => {
+            const current = ensureExclusiveEntry(storeId);
+            const accionesActualizadas = current.acciones.map((a) =>
+              a.id === actionId ? { ...a, [field]: value } : a
+            );
+            return {
+              ...prev,
+              [storeId]: {
+                ...current,
+                acciones: accionesActualizadas,
+              },
+            };
+          });
         }
 
-        // --------- LECTURA DE EXCEL CHECKLIST (F90 + columna F) ---------
+        function removeExclusiveAction(storeId, actionId) {
+          setExclusiveData((prev) => {
+            const current = ensureExclusiveEntry(storeId);
+            const accionesActualizadas = current.acciones.filter(
+              (a) => a.id !== actionId
+            );
+            return {
+              ...prev,
+              [storeId]: {
+                ...current,
+                acciones: accionesActualizadas,
+              },
+            };
+          });
+        }
+
+        // --------- LECTURA DE EXCEL CHECKLIST (F90 en PROCESOS BASICOS) ---------
         function handleChecklistFileChange(storeId, visitId, event) {
           const file = event.target.files?.[0];
           if (!file) return;
@@ -635,89 +562,97 @@
           reader.onload = (ev) => {
             try {
               const data = ev.target.result;
-              if (!window.XLSX || !isExcel) {
-                console.warn("XLSX no disponible o archivo no Excel");
-                return;
-              }
-              const wb = XLSX.read(data, { type: "array" });
+              let checklistFromF90Set = false;
 
-              // Buscar la hoja "PROCESOS BASICOS" / "PROCESOS BÁSICOS"
-              let sheetName = wb.SheetNames[0];
-              const preferred = wb.SheetNames.find((name) =>
-                normalizeBasic(name).includes("procesos")
-              );
-              if (preferred) sheetName = preferred;
+              if (isExcel && window.XLSX) {
+                const wb = XLSX.read(data, { type: "array" });
 
-              const sheet = wb.Sheets[sheetName];
+                let sheetName =
+                  wb.SheetNames.find((n) =>
+                    n.toLowerCase().includes("procesos basicos")
+                  ) ||
+                  wb.SheetNames.find((n) =>
+                    n.toLowerCase().includes("procesos")
+                  ) ||
+                  wb.SheetNames[0];
 
-              // 1) Leer F90 -> % checklist global
-              let checklistF90 = null;
-              const cellF90 = sheet["F90"];
-              if (cellF90 && cellF90.v != null) {
-                let rawVal = cellF90.v;
-                if (typeof rawVal === "number") {
-                  let v = rawVal;
-                  if (v <= 1) v = v * 100;
-                  checklistF90 = v;
-                } else if (typeof rawVal === "string") {
-                  const m = rawVal
-                    .replace(",", ".")
-                    .match(/(\d{1,3}(?:\.\d+)?)/);
-                  if (m) {
-                    let v = parseFloat(m[1]);
+                const sheet = wb.Sheets[sheetName];
+
+                // 1) Leer F90 -> % checklist global
+                let checklistF90 = null;
+                const cell = sheet["F90"];
+                if (cell && cell.v != null) {
+                  let rawVal = cell.v;
+                  if (typeof rawVal === "number") {
+                    let v = rawVal;
                     if (v <= 1) v = v * 100;
                     checklistF90 = v;
+                  } else if (typeof rawVal === "string") {
+                    const m = rawVal
+                      .replace(",", ".")
+                      .match(/(\d{1,3}(?:\.\d+)?)/);
+                    if (m) {
+                      let v = parseFloat(m[1]);
+                      if (v <= 1) v = v * 100;
+                      checklistF90 = v;
+                    }
                   }
                 }
-              }
 
-              if (checklistF90 !== null && !isNaN(checklistF90)) {
-                updateVisitField(
-                  storeId,
-                  visitId,
-                  "checklist",
-                  checklistF90
-                );
-              }
+                if (checklistF90 !== null && !isNaN(checklistF90)) {
+                  updateVisitField(
+                    storeId,
+                    visitId,
+                    "checklist",
+                    checklistF90
+                  );
+                  checklistFromF90Set = true;
+                }
 
-              // 2) Leer toda la columna F como 0/1 para criterios
-              const flags = [];
-              for (let row = 1; row <= 200; row++) {
-                const c = sheet["F" + row];
-                if (!c || c.v === undefined || c.v === null) continue;
-                let v = c.v;
-                if (typeof v === "string") {
-                  v = v.trim();
-                  if (v === "") continue;
-                  if (v === "0" || v === "1") v = Number(v);
-                }
-                if (v === 0 || v === 1) {
-                  flags.push(v);
-                }
-              }
-              const trimmed = flags.slice(0, TOTAL_CHECKLIST_ITEMS);
-              if (trimmed.length > 0) {
-                updateVisitField(storeId, visitId, "pointFlags", trimmed);
-              }
-
-              // 3) Detectar HIT en texto (opcional)
-              const csv = XLSX.utils.sheet_to_csv(sheet);
-              if (csv) {
-                const reHit = /hit[^a-zA-Z0-9]{0,15}(s[ií]|no)/i;
-                const mHit = csv.match(reHit);
-                if (mHit) {
-                  const val = mHit[1].toLowerCase().startsWith("s")
-                    ? "Sí"
-                    : "No";
-                  updateVisitField(storeId, visitId, "hit", val);
-                }
+                const csv = XLSX.utils.sheet_to_csv(sheet);
+                parseFromText(csv, checklistFromF90Set);
+              } else {
+                const text =
+                  typeof data === "string"
+                    ? data
+                    : new TextDecoder("utf-8").decode(data);
+                parseFromText(text, checklistFromF90Set);
               }
             } catch (e) {
               console.error("Error leyendo Excel de checklist", e);
             }
           };
 
-          reader.readAsArrayBuffer(file);
+          if (isExcel) {
+            reader.readAsArrayBuffer(file);
+          } else {
+            reader.readAsText(file);
+          }
+
+          function parseFromText(text, checklistAlreadySet) {
+            if (!text) return;
+
+            const reHit = /hit[^a-zA-Z0-9]{0,15}(s[ií]|no)/i;
+            const mHit = text.match(reHit);
+            if (mHit) {
+              const val = mHit[1].toLowerCase().startsWith("s")
+                ? "Sí"
+                : "No";
+              updateVisitField(storeId, visitId, "hit", val);
+            }
+
+            if (!checklistAlreadySet) {
+              const reCap =
+                /capacitaci[oó]n[^0-9%]{0,80}(\d{1,3})\s*%/i;
+              const mCap = text.match(reCap);
+              if (mCap) {
+                const n = Number(mCap[1]);
+                if (!isNaN(n)) {
+                  updateVisitField(storeId, visitId, "checklist", n);
+                }
+              }
+            }
+          }
         }
 
         function saveToCloud() {
@@ -725,6 +660,7 @@
             const payload = {
               stores,
               lastSavedAt: new Date().toISOString(),
+              exclusiveData,
             };
             localStorage.setItem(
               "seguimientoAudioV1",
@@ -746,46 +682,19 @@
                 ...s,
                 id: idx + 1,
                 centroRegional: normalizarDelegado(s.centroRegional || ""),
-                visitas:
-                  s.visitas && s.visitas.length
-                    ? s.visitas.map((v, vidx) => ({
-                        id: v.id ?? vidx + 1,
-                        fecha: v.fecha || "",
-                        responsable: v.responsable || "",
-                        excelName: v.excelName || "",
-                        hit: v.hit || "",
-                        checklist:
-                          typeof v.checklist === "number"
-                            ? v.checklist
-                            : v.checklist ?? null,
-                        centroAAR: v.centroAAR || "",
-                        pointFlags: v.pointFlags || null,
-                      }))
-                    : createEmptyVisits(),
-                exclusiveActions: (s.exclusiveActions || []).map(
-                  (a, aidx) => ({
-                    id: a.id ?? aidx + 1,
-                    tipo: a.tipo || "",
-                    ventasMes: a.ventasMes || a.mes || "",
-                    ventas: a.ventas || "",
-                    objetivoMes: a.objetivoMes || a.mes || "",
-                    objetivo: a.objetivo || "",
-                    fecha: a.fecha || "",
-                    derivaciones: a.derivaciones || "",
-                  })
-                ),
               }));
               setStores(normalizedStores);
               setExpandedStoreId(null);
               setDashboardStoreId(null);
             }
             if (parsed.lastSavedAt) setLastSavedAt(parsed.lastSavedAt);
+            if (parsed.exclusiveData) setExclusiveData(parsed.exclusiveData);
           } catch (e) {
             console.error("Error al leer de nube/localStorage", e);
           }
         }
 
-        // ------------ FILTRADO Y ORDENACIÓN LISTADO CENTROS ------------
+        // ------------ FILTRADO Y ORDENACIÓN LISTADO PRINCIPAL ------------
         const filteredStores = stores.filter((store) => {
           const respAudio = deriveRespAudio(store);
           const centroAARValor = deriveCentroAAR(store);
@@ -834,7 +743,7 @@
 
           if (
             filterResponsableAudio &&
-            respAudio.toLowerCase() !==
+            deriveRespAudio(store).toLowerCase() !==
               filterResponsableAudio.toLowerCase()
           )
             return false;
@@ -874,7 +783,7 @@
           stores.map((s) => deriveRespAudio(s))
         );
 
-        // ------------ MÉTRICAS GLOBALES Y POR CENTRO ------------
+        // ------------ MÉTRICAS GLOBALES ------------
         const allVisits = stores.flatMap((s) => s.visitas);
         const visitasValidasGlobal = allVisits.filter(
           (v) => v.excelName && v.excelName !== ""
@@ -901,23 +810,8 @@
           (v) => v.fecha && !isValidFecha(v.fecha)
         );
 
-        const globalPointAverages = computePointAverages(
-          visitasValidasGlobal
-        );
-
-        const storePointAveragesMap = new Map();
-        stores.forEach((store) => {
-          const vv = store.visitas.filter(
-            (v) => v.excelName && v.excelName !== ""
-          );
-          storePointAveragesMap.set(store.id, computePointAverages(vv));
-        });
-
-        // Dashboard por centro
         const dashboardStore =
-          stores.find((s) => s.id === dashboardStoreId) ||
-          stores[0] ||
-          null;
+          stores.find((s) => s.id === dashboardStoreId) || stores[0] || null;
 
         let dashVisitasConExcel = [];
         let dashChecklistMedio = null;
@@ -933,54 +827,40 @@
           dashAplicaHit = aplicaHitTexto(dashVisitasConExcel);
         }
 
-        // Checklist view (mapa horizontal)
-        let currentPointAverages = globalPointAverages;
-        if (checklistViewValue !== "global") {
-          const id = Number(checklistViewValue);
-          const arr = storePointAveragesMap.get(id);
-          if (arr) currentPointAverages = arr;
-        }
+        // Centros exclusivos derivados de stores
+        const exclusiveStores = stores.filter((s) =>
+          isExclusiveCenter(s.centro)
+        );
 
-        // Centros exclusivos
-        const exclusiveStores = stores.filter(isExclusiveStore);
+        // Agregados globales de centros exclusivos
+        let totalVentasExcl = 0;
+        let totalObjetivoExcl = 0;
 
-        const exclusiveSummaries = exclusiveStores.map((store) => {
-          const actions = store.exclusiveActions || [];
-          const ventas = actions.reduce(
-            (sum, a) => sum + (Number(a.ventas) || 0),
+        exclusiveStores.forEach((s) => {
+          const data = ensureExclusiveEntry(s.id);
+          const acciones = data.acciones || [];
+          const tVentas = acciones.reduce(
+            (sum, a) => sum + (Number(a.ventasImporte || 0) || 0),
             0
           );
-          const objetivo = actions.reduce(
-            (sum, a) => sum + (Number(a.objetivo) || 0),
+          const tObjetivo = acciones.reduce(
+            (sum, a) => sum + (Number(a.objetivoImporte || 0) || 0),
             0
           );
-          const pct = objetivo > 0 ? (ventas / objetivo) * 100 : null;
-          return { store, ventas, objetivo, pct };
+          totalVentasExcl += tVentas;
+          totalObjetivoExcl += tObjetivo;
         });
 
-        const totalVentasEx = exclusiveSummaries.reduce(
-          (s, x) => s + x.ventas,
-          0
-        );
-        const totalObjetivoEx = exclusiveSummaries.reduce(
-          (s, x) => s + x.objetivo,
-          0
-        );
-        const pctGlobalEx =
-          totalObjetivoEx > 0 ? (totalVentasEx / totalObjetivoEx) * 100 : null;
+        const pctResultadoExcl =
+          totalObjetivoExcl > 0
+            ? (totalVentasExcl / totalObjetivoExcl) * 100
+            : null;
 
-        // Audiología avanzada remoto (AAR)
+        // Centros AAR / Audiología avanzada remoto
         const aarCenters = stores.filter((s) => {
-          const val = deriveCentroAAR(s);
-          return val === "Sí" || val === "En formación";
+          const v = deriveCentroAAR(s);
+          return v === "Sí" || v === "En formación";
         });
-
-        function aarBadgeClass(val) {
-          if (val === "Sí") return "bg-green-100 text-green-800";
-          if (val === "En formación") return "bg-amber-100 text-amber-800";
-          if (val === "No") return "bg-red-100 text-red-700";
-          return "bg-gray-100 text-gray-700";
-        }
 
         // =====================
         // RENDER
@@ -1050,37 +930,14 @@
                 <section className="mt-6 space-y-6">
                   {/* Mapa checklist */}
                   <div className="bg-white p-6 rounded-2xl shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h2 className="font-bold text-lg">
-                          Mapa horizontal de checklist de visita
-                        </h2>
-                        <p className="text-gray-500 text-sm">
-                          Etapas del proceso de audio según el checklist
-                          oficial. Muestra el % medio de aplicación por
-                          criterio (columna F del Excel).
-                        </p>
-                      </div>
-                      <div className="text-[11px] flex items-center gap-1">
-                        <span className="mr-1">Ver datos de:</span>
-                        <select
-                          className="border rounded px-2 py-1"
-                          value={checklistViewValue}
-                          onChange={(e) =>
-                            setChecklistViewValue(e.target.value)
-                          }
-                        >
-                          <option value="global">Global</option>
-                          {stores.map((s) => (
-                            <option key={s.id} value={String(s.id)}>
-                              {s.centro || s.codigo}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+                    <h2 className="font-bold text-lg mb-2">
+                      Mapa horizontal de checklist de visita
+                    </h2>
+                    <p className="text-gray-500 mb-4 text-sm">
+                      Etapas del proceso de audio según el checklist oficial.
+                    </p>
                     <div className="flex gap-4 overflow-x-auto pb-2">
-                      {CHECKLIST.map((stage, stageIdx) => (
+                      {CHECKLIST.map((stage) => (
                         <div
                           key={stage.etapa}
                           className="min-w-[260px] max-w-xs bg-gray-50 border rounded-2xl px-4 py-3 flex-shrink-0"
@@ -1094,38 +951,15 @@
                             </span>
                           </div>
                           <ul className="space-y-1">
-                            {stage.items.map((item, itemIdx) => {
-                              const globalIdx =
-                                STAGE_OFFSETS[stageIdx] + itemIdx;
-                              const pct =
-                                currentPointAverages[globalIdx] ?? null;
-                              const colorClass =
-                                pct === null
-                                  ? "bg-gray-200 text-gray-700"
-                                  : pct >= 85
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-700";
-                              return (
-                                <li
-                                  key={itemIdx}
-                                  className="text-[11px] text-gray-700 flex items-center justify-between gap-2"
-                                >
-                                  <span className="flex-1 leading-tight">
-                                    {item}
-                                  </span>
-                                  <span
-                                    className={
-                                      "ml-2 px-2 py-0.5 rounded-full whitespace-nowrap " +
-                                      colorClass
-                                    }
-                                  >
-                                    {pct === null
-                                      ? "-"
-                                      : `${pct.toFixed(0)}%`}
-                                  </span>
-                                </li>
-                              );
-                            })}
+                            {stage.items.map((item, idx) => (
+                              <li
+                                key={idx}
+                                className="text-[11px] text-gray-700 flex gap-1"
+                              >
+                                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                                <span className="leading-tight">{item}</span>
+                              </li>
+                            ))}
                           </ul>
                         </div>
                       ))}
@@ -1163,9 +997,7 @@
                               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
                                 <span>
                                   {checklistMediaGlobal !== null
-                                    ? `${checklistMediaGlobal.toFixed(
-                                        0
-                                      )}%`
+                                    ? `${checklistMediaGlobal.toFixed(0)}%`
                                     : "--"}
                                 </span>
                               </div>
@@ -1251,56 +1083,51 @@
                               <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
                                 <span>
                                   {dashChecklistMedio !== null
-                                    ? `${dashChecklistMedio.toFixed(
-                                        0
-                                      )}%`
+                                    ? `${dashChecklistMedio.toFixed(0)}%`
                                     : "--"}
                                 </span>
                               </div>
                             </div>
                           </div>
                           {dashboardStore ? (
-                            <div className="text-[10px] space-y-1">
-                              <p className="font-semibold">
-                                {dashboardStore.centro ||
-                                  dashboardStore.codigo}
-                                {isExclusiveStore(dashboardStore) && (
-                                  <span className="ml-2 text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                                    EXCLUSIVO
+                            <>
+                              <div className="text-[10px] space-y-1">
+                                <p className="font-semibold">
+                                  {dashboardStore.centro ||
+                                    dashboardStore.codigo}
+                                </p>
+                                <p>
+                                  Provincia:{" "}
+                                  <span
+                                    className="inline-block px-2 py-0.5 rounded-full"
+                                    style={delegadoColor(
+                                      dashboardStore.centroRegional
+                                    )}
+                                  >
+                                    {dashboardStore.provincia ||
+                                      "Provincia sin definir"}
                                   </span>
-                                )}
-                              </p>
-                              <p>
-                                Provincia:{" "}
-                                <span
-                                  className="inline-block px-2 py-0.5 rounded-full"
-                                  style={delegadoColor(
-                                    dashboardStore.centroRegional
-                                  )}
-                                >
-                                  {dashboardStore.provincia ||
-                                    "Provincia sin definir"}
-                                </span>
-                              </p>
-                              <p>
-                                Nº visitas (Excels adjuntos):{" "}
-                                <strong>
-                                  {dashVisitasConExcel.length}
-                                </strong>
-                              </p>
-                              <p>
-                                % checklist medio (F90):{" "}
-                                {dashChecklistMedio !== null
-                                  ? `${dashChecklistMedio.toFixed(0)}%`
-                                  : "-"}
-                              </p>
-                              <p>
-                                Aplica HIT:{" "}
-                                <strong>
-                                  {dashAplicaHit ? dashAplicaHit : "-"}
-                                </strong>
-                              </p>
-                            </div>
+                                </p>
+                                <p>
+                                  Nº visitas (Excels adjuntos):{" "}
+                                  <strong>
+                                    {dashVisitasConExcel.length}
+                                  </strong>
+                                </p>
+                                <p>
+                                  % checklist medio (F90):{" "}
+                                  {dashChecklistMedio !== null
+                                    ? `${dashChecklistMedio.toFixed(0)}%`
+                                    : "-"}
+                                </p>
+                                <p>
+                                  Aplica HIT:{" "}
+                                  <strong>
+                                    {dashAplicaHit ? dashAplicaHit : "-"}
+                                  </strong>
+                                </p>
+                              </div>
+                            </>
                           ) : (
                             <p className="text-[10px] text-gray-500">
                               Selecciona un centro en el desplegable para ver
@@ -1479,7 +1306,7 @@
                         </select>
 
                         <select
-                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
                           value={filterCentroAAR}
                           onChange={(e) => setFilterCentroAAR(e.target.value)}
                         >
@@ -1566,12 +1393,17 @@
                                   "-"
                                 );
 
-                              const centroEsExclusivo =
-                                isExclusiveStore(store);
+                              const rowExclusive = isExclusiveCenter(
+                                store.centro
+                              );
 
                               return (
                                 <React.Fragment key={store.id}>
-                                  <tr className="border-b hover:bg-gray-50 align-top">
+                                  <tr
+                                    className={`border-b hover:bg-gray-50 align-top ${
+                                      rowExclusive ? "bg-amber-50/60" : ""
+                                    }`}
+                                  >
                                     <td className="px-2 py-1">
                                       {index + 1}
                                     </td>
@@ -1584,16 +1416,7 @@
                                       {store.propietario || "-"}
                                     </td>
                                     <td className="px-2 py-1">
-                                      <div className="flex items-center gap-1">
-                                        <span>
-                                          {store.centro || "-"}
-                                        </span>
-                                        {centroEsExclusivo && (
-                                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                                            EXCLUSIVO
-                                          </span>
-                                        )}
-                                      </div>
+                                      {store.centro || "-"}
                                     </td>
                                     <td className="px-2 py-1">
                                       <span
@@ -1623,13 +1446,7 @@
                                       {respAudioCentro || "-"}
                                     </td>
                                     <td className="px-2 py-1">
-                                      <span
-                                        className={`inline-block px-2 py-0.5 rounded-full text-center ${aarBadgeClass(
-                                          centroAARValor
-                                        )}`}
-                                      >
-                                        {centroAARValor || "-"}
-                                      </span>
+                                      {centroAARValor || "-"}
                                     </td>
                                     <td className="px-2 py-1 text-right">
                                       {visitasConExcel.length}
@@ -1665,8 +1482,7 @@
                                         <div className="text-[11px]">
                                           <p className="font-semibold mb-2">
                                             Visitas y checklist adjunto (hasta
-                                            4) –{" "}
-                                            {store.centro || store.codigo}
+                                            4) – {store.centro || store.codigo}
                                           </p>
                                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
                                             {store.visitas.map((visit) => (
@@ -1727,7 +1543,7 @@
                                                   </span>
                                                   <input
                                                     type="file"
-                                                    accept=".xlsx,.xls"
+                                                    accept=".xlsx,.xls,.csv"
                                                     className="hidden"
                                                     onChange={(e) =>
                                                       handleChecklistFileChange(
@@ -1835,19 +1651,23 @@
                                                   </div>
                                                 </div>
 
-                                                <p className="text-[9px] text-gray-500 mt-2">
-                                                  La plataforma lee la celda{" "}
+                                                <p className="text-[9px] text-gray-500 mt-1">
+                                                  Adjunta el Excel del
+                                                  checklist: se lee
+                                                  automáticamente el % global
+                                                  desde la celda{" "}
                                                   <strong>F90</strong> de la
-                                                  hoja “PROCESOS BÁSICOS /
-                                                  PROCESOS BASICOS” y la
-                                                  columna F como 0/1 (aplicación
-                                                  de cada criterio).
+                                                  hoja{" "}
+                                                  <strong>
+                                                    "PROCESOS BASICOS"
+                                                  </strong>
+                                                  .
                                                 </p>
                                               </div>
                                             ))}
                                           </div>
                                           <button
-                                            className="mt-1 text-[11px] px-3 py-1 rounded-full bg-red-600 text-white font-semibold"
+                                            className="mt-3 text-[11px] px-3 py-1 rounded-full bg-red-600 text-white font-semibold"
                                             onClick={() =>
                                               setExpandedStoreId(null)
                                             }
@@ -1914,6 +1734,496 @@
 
                 {/* CENTROS EXCLUSIVOS */}
                 <section className="mt-10 bg-white p-6 rounded-2xl shadow">
-                  <div className="flex items-center justify-between mb-3 gap-3">
-                    <div>
-                      <h3 className
+                  <h3 className="font-bold text-lg mb-3">
+                    Centros exclusivos
+                  </h3>
+                  {exclusiveStores.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      Aún no hay centros exclusivos detectados en el listado.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mb-4 text-[11px] bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex flex-wrap gap-4 items-center">
+                        <span>
+                          Nº centros exclusivos:{" "}
+                          <strong>{exclusiveStores.length}</strong>
+                        </span>
+                        <span>
+                          Ventas acumuladas:{" "}
+                          <strong>
+                            {totalVentasExcl.toLocaleString("es-ES", {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            })}
+                            €
+                          </strong>
+                        </span>
+                        <span>
+                          Objetivo acumulado:{" "}
+                          <strong>
+                            {totalObjetivoExcl.toLocaleString("es-ES", {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            })}
+                            €
+                          </strong>
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                            pctResultadoExcl === null
+                              ? "bg-gray-100 text-gray-700"
+                              : pctResultadoExcl >= 100
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full bg-current/70" />
+                          <span>
+                            % resultado global:{" "}
+                            {pctResultadoExcl !== null
+                              ? `${pctResultadoExcl.toFixed(0)}%`
+                              : "-"}
+                          </span>
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[11px] border-collapse">
+                          <thead>
+                            <tr className="bg-amber-50 border-b">
+                              <th className="text-left px-2 py-2">Centro</th>
+                              <th className="text-left px-2 py-2">
+                                Provincia
+                              </th>
+                              <th className="text-left px-2 py-2">
+                                Delegado
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Ventas mensuales €
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Objetivo mensual €
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                % resultado
+                              </th>
+                              <th className="text-center px-2 py-2">
+                                Acciones, meses y derivaciones (+)
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {exclusiveStores.map((s) => {
+                              const data = ensureExclusiveEntry(s.id);
+                              const acciones = data.acciones || [];
+                              const totalVentas = acciones.reduce(
+                                (sum, a) =>
+                                  sum +
+                                  (Number(a.ventasImporte || 0) || 0),
+                                0
+                              );
+                              const totalObjetivo = acciones.reduce(
+                                (sum, a) =>
+                                  sum +
+                                  (Number(a.objetivoImporte || 0) || 0),
+                                0
+                              );
+                              const pct =
+                                totalObjetivo > 0
+                                  ? (totalVentas / totalObjetivo) * 100
+                                  : null;
+
+                              return (
+                                <React.Fragment key={s.id}>
+                                  <tr className="border-b bg-amber-50/40">
+                                    <td className="px-2 py-1 font-semibold">
+                                      {s.centro || "-"}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span
+                                        className="inline-block px-2 py-0.5 rounded-full"
+                                        style={delegadoColor(
+                                          s.centroRegional
+                                        )}
+                                      >
+                                        {s.provincia || "-"}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span
+                                        className="inline-block px-2 py-0.5 rounded-full"
+                                        style={delegadoColor(
+                                          s.centroRegional
+                                        )}
+                                      >
+                                        {s.centroRegional || "Sin delegado"}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {totalVentas.toLocaleString("es-ES", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0,
+                                      })}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {totalObjetivo.toLocaleString("es-ES", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0,
+                                      })}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {pct === null ? (
+                                        "-"
+                                      ) : (
+                                        <span
+                                          className={`inline-block min-w-[40px] px-2 py-0.5 rounded-full ${
+                                            pct >= 100
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-red-100 text-red-700"
+                                          }`}
+                                        >
+                                          {pct.toFixed(0)}%
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-2 py-1 text-center">
+                                      <button
+                                        className="text-[10px] px-3 py-1 rounded-full border border-amber-500 text-amber-700 hover:bg-amber-50"
+                                        onClick={() =>
+                                          setExpandedExclusiveId(
+                                            expandedExclusiveId === s.id
+                                              ? null
+                                              : s.id
+                                          )
+                                        }
+                                      >
+                                        Ver / añadir (+)
+                                      </button>
+                                    </td>
+                                  </tr>
+
+                                  {expandedExclusiveId === s.id && (
+                                    <tr className="bg-amber-50/30 border-b">
+                                      <td
+                                        colSpan={7}
+                                        className="px-3 py-3"
+                                      >
+                                        <div className="text-[11px]">
+                                          <p className="font-semibold mb-2">
+                                            Acciones, meses y derivaciones –{" "}
+                                            {s.centro}
+                                          </p>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+                                            {acciones.map((acc) => (
+                                              <div
+                                                key={acc.id}
+                                                className="border rounded-xl p-2 bg-white flex flex-col gap-2"
+                                              >
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Acción
+                                                    </p>
+                                                    <select
+                                                      className="w-full border rounded px-2 py-1"
+                                                      value={acc.tipo}
+                                                      onChange={(e) =>
+                                                        updateExclusiveAction(
+                                                          s.id,
+                                                          acc.id,
+                                                          "tipo",
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                    >
+                                                      <option value="">
+                                                        Selecciona...
+                                                      </option>
+                                                      {ACTION_TYPES.map(
+                                                        (t) => (
+                                                          <option
+                                                            key={t}
+                                                            value={t}
+                                                          >
+                                                            {t}
+                                                          </option>
+                                                        )
+                                                      )}
+                                                    </select>
+                                                  </div>
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Fecha acción
+                                                    </p>
+                                                    <input
+                                                      type="date"
+                                                      className="w-full border rounded px-2 py-1"
+                                                      value={acc.fecha || ""}
+                                                      onChange={(e) =>
+                                                        updateExclusiveAction(
+                                                          s.id,
+                                                          acc.id,
+                                                          "fecha",
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                    />
+                                                  </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Derivaciones
+                                                    </p>
+                                                    <input
+                                                      type="number"
+                                                      min={0}
+                                                      className="w-full border rounded px-2 py-1"
+                                                      value={
+                                                        acc.derivaciones || ""
+                                                      }
+                                                      onChange={(e) =>
+                                                        updateExclusiveAction(
+                                                          s.id,
+                                                          acc.id,
+                                                          "derivaciones",
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                    />
+                                                  </div>
+
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Ventas mensuales
+                                                    </p>
+                                                    <div className="flex gap-1">
+                                                      <select
+                                                        className="border rounded px-1 py-1 text-[10px] flex-1"
+                                                        value={
+                                                          acc.ventasMes || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateExclusiveAction(
+                                                            s.id,
+                                                            acc.id,
+                                                            "ventasMes",
+                                                            e.target.value
+                                                          )
+                                                        }
+                                                      >
+                                                        <option value="">
+                                                          Mes
+                                                        </option>
+                                                        {EXCLUSIVE_MONTHS.map(
+                                                          (m) => (
+                                                            <option
+                                                              key={m.key}
+                                                              value={m.key}
+                                                            >
+                                                              {m.label}
+                                                            </option>
+                                                          )
+                                                        )}
+                                                      </select>
+                                                      <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="border rounded px-1 py-1 w-24 text-right"
+                                                        value={
+                                                          acc.ventasImporte ||
+                                                          ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateExclusiveAction(
+                                                            s.id,
+                                                            acc.id,
+                                                            "ventasImporte",
+                                                            e.target.value
+                                                          )
+                                                        }
+                                                      />
+                                                    </div>
+                                                  </div>
+
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Objetivo mensual
+                                                    </p>
+                                                    <div className="flex gap-1">
+                                                      <select
+                                                        className="border rounded px-1 py-1 text-[10px] flex-1"
+                                                        value={
+                                                          acc.objetivoMes || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateExclusiveAction(
+                                                            s.id,
+                                                            acc.id,
+                                                            "objetivoMes",
+                                                            e.target.value
+                                                          )
+                                                        }
+                                                      >
+                                                        <option value="">
+                                                          Mes
+                                                        </option>
+                                                        {EXCLUSIVE_MONTHS.map(
+                                                          (m) => (
+                                                            <option
+                                                              key={m.key}
+                                                              value={m.key}
+                                                            >
+                                                              {m.label}
+                                                            </option>
+                                                          )
+                                                        )}
+                                                      </select>
+                                                      <input
+                                                        type="number"
+                                                        min={0}
+                                                        className="border rounded px-1 py-1 w-24 text-right"
+                                                        value={
+                                                          acc.objetivoImporte ||
+                                                          ""
+                                                        }
+                                                        onChange={(e) =>
+                                                          updateExclusiveAction(
+                                                            s.id,
+                                                            acc.id,
+                                                            "objetivoImporte",
+                                                            e.target.value
+                                                          )
+                                                        }
+                                                      />
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                <button
+                                                  className="self-end mt-1 text-[10px] px-2 py-0.5 rounded-full border border-red-300 text-red-600 hover:bg-red-50"
+                                                  onClick={() =>
+                                                    removeExclusiveAction(
+                                                      s.id,
+                                                      acc.id
+                                                    )
+                                                  }
+                                                >
+                                                  Eliminar acción
+                                                </button>
+                                              </div>
+                                            ))}
+                                          </div>
+
+                                          <button
+                                            className="text-[11px] px-3 py-1 rounded-full bg-amber-500 text-white font-semibold mr-2"
+                                            onClick={() =>
+                                              addExclusiveAction(s.id)
+                                            }
+                                          >
+                                            Añadir acción (+)
+                                          </button>
+                                          <button
+                                            className="text-[11px] px-3 py-1 rounded-full bg-amber-700 text-white font-semibold"
+                                            onClick={() =>
+                                              setExpandedExclusiveId(null)
+                                            }
+                                          >
+                                            Cerrar acciones
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </section>
+
+                {/* AUDIOLOGÍA AVANZADA REMOTO (AAR) */}
+                <section className="mt-10 bg-white p-6 rounded-2xl shadow mb-10">
+                  <h3 className="font-bold text-lg mb-3">
+                    Audiología avanzada remoto (AAR)
+                  </h3>
+                  {aarCenters.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      Aún no hay centros marcados como AAR o en formación.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px] border-collapse">
+                        <thead>
+                          <tr className="bg-sky-50 border-b">
+                            <th className="text-left px-2 py-2">Centro</th>
+                            <th className="text-left px-2 py-2">Provincia</th>
+                            <th className="text-left px-2 py-2">Delegado</th>
+                            <th className="text-left px-2 py-2">
+                              Estado AAR
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {aarCenters.map((s) => {
+                            const estado = deriveCentroAAR(s);
+                            const colorEstado =
+                              estado === "Sí"
+                                ? "bg-green-100 text-green-800"
+                                : estado === "En formación"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-red-100 text-red-700";
+                            return (
+                              <tr key={s.id} className="border-b">
+                                <td className="px-2 py-1">
+                                  {s.centro || "-"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  <span
+                                    className="inline-block px-2 py-0.5 rounded-full"
+                                    style={delegadoColor(s.centroRegional)}
+                                  >
+                                    {s.provincia || "-"}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1">
+                                  <span
+                                    className="inline-block px-2 py-0.5 rounded-full"
+                                    style={delegadoColor(s.centroRegional)}
+                                  >
+                                    {s.centroRegional || "Sin delegado"}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1">
+                                  <span
+                                    className={
+                                      "inline-block px-2 py-0.5 rounded-full " +
+                                      colorEstado
+                                    }
+                                  >
+                                    {estado || "-"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
