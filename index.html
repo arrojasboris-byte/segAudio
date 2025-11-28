@@ -3,9 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Seguimiento de procesos de Audio</title>
-    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React 18 -->
     <script
       src="https://unpkg.com/react@18/umd/react.development.js"
       crossorigin
@@ -14,9 +12,7 @@
       src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
       crossorigin
     ></script>
-    <!-- Babel para JSX en el navegador -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- XLSX para leer Excels -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
 
@@ -26,9 +22,10 @@
     <script type="text/babel" data-presets="env,react">
       const { useState, useEffect } = React;
 
-      /*************************************************
-       * 1. Checklist (solo visual)
-       *************************************************/
+      // =====================
+      // Checklist (mapa horizontal)
+      // =====================
+
       const CHECKLIST = [
         {
           etapa: "HOLA",
@@ -64,7 +61,7 @@
           etapa: "MI SOLUCIÓN",
           items: [
             "Resumir claramente los resultados y su impacto",
-            "Usar gráficas para apoyar la explicación",
+            "Usar gráficas para apoyar la explicación (severidad, área audible, fonemas)",
             "Vincular resultados con síntomas y quejas de la anamnesis",
             "Hacer visible la pérdida auditiva con preguntas de implicación",
             "Simular sonidos para mostrar la diferencia con/ sin ayuda",
@@ -74,7 +71,7 @@
           etapa: "PRUEBO",
           items: [
             "Explicar la prueba de capacidad de adaptación como prueba de salud",
-            "Escoger audífono según perfil en gama adecuada",
+            "Escoger audífono según perfil en gama adecuada (Diamante)",
             "Realizar programación inicial y ajustes según perfil",
             "Explicar funcionamiento y mantenimiento para llevarse audífonos a casa",
             "Entregar documentación (contrato, presupuesto, pasaporte)",
@@ -84,8 +81,8 @@
           etapa: "ME COMPROMETO",
           items: [
             "Trabajar resolución de objeciones con lenguaje positivo",
-            "Explicar facilidades de pago",
-            "Detallar pack Serenidad y Serenidad +",
+            "Explicar facilidades de pago (Infinity / NextYear)",
+            "Detallar pack Serenidad y Serenidad + (compromisos)",
             "Explicar en detalle pruebas HIT y su utilidad",
             "Recomendar accesorios de conectividad y productos de higiene",
           ],
@@ -101,7 +98,7 @@
         {
           etapa: "SEGUIMIENTO Y AGENDA",
           items: [
-            "Registrar prueba en el sistema",
+            "Registrar prueba en el sistema (Gio)",
             "Llamar al día siguiente de la prueba para seguimiento",
             "Agendar visita en 4 días para revisión",
           ],
@@ -120,7 +117,7 @@
           etapa: "AYUDAS Y ACUERDOS",
           items: [
             "Conocer y activar acuerdos con FIAPAS y ONCE",
-            "Revisar convenios locales",
+            "Revisar convenios locales (anotar detalle en observaciones)",
             "Conocer ayudas de comunidad autónoma",
             "Conocer ayudas generales +65 años y hasta 26 años",
           ],
@@ -133,27 +130,30 @@
           etapa: "FORMACIÓN",
           items: [
             "Onboarding Academy realizado",
-            "Formaciones obligatorias centros exclusivos",
-            "Formaciones obligatorias centros audio realizadas",
+            "Formaciones obligatorias de centros exclusivos cumplimentadas",
+            "Formaciones obligatorias de centros audio realizadas",
           ],
         },
       ];
 
-      /*************************************************
-       * 2. Utilidades y modelos
-       *************************************************/
+      const TOTAL_CHECKLIST_ITEMS = CHECKLIST.reduce(
+        (sum, s) => sum + s.items.length,
+        0
+      );
 
-      const ACCION_OPTIONS = [
-        "STAND",
-        "MAILING",
-        "CASHBACK",
-        "AZAFATA CALLE",
-        "RULETA",
-        "ACCION COLECTIVO",
-        "CALL CENTER",
-        "ACCION DERIVACION TIENDA",
-        "DERIVACIÓN COLECTIVO",
-      ];
+      const STAGE_OFFSETS = (() => {
+        const offsets = [];
+        let acc = 0;
+        for (const s of CHECKLIST) {
+          offsets.push(acc);
+          acc += s.items.length;
+        }
+        return offsets;
+      })();
+
+      // =====================
+      // Utilidades generales
+      // =====================
 
       function createEmptyVisits() {
         return [1, 2, 3, 4].map((id) => ({
@@ -162,19 +162,14 @@
           responsable: "",
           excelName: "",
           hit: "",
-          checklist: null, // % F90
+          checklist: null, // F90
           centroAAR: "",
+          pointFlags: null, // array de 0/1 por criterio F
         }));
       }
 
-      function createEmptyAccion() {
-        return {
-          tipo: "",
-          fecha: "",
-          derivaciones: null,
-          ventas: null,
-          objetivo: null,
-        };
+      function normalizarCentro(nombre) {
+        return (nombre || "").trim().toUpperCase();
       }
 
       function normalizarDelegado(nombre) {
@@ -187,33 +182,65 @@
           .join(" ");
       }
 
+      // normalización básica sin tildes para comparaciones
       function normalizeBasic(str) {
         return (str || "")
           .toString()
-          .toLowerCase()
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
       }
 
-      // Palabras clave para centros exclusivos
-      const EXCLUSIVE_KEYWORDS = [
-        "exclusivo",
-        "fuenlabrada paseo de la estacion",
-        "reina mercedes",
-        "delicias zaragoza",
-        "peñacastillo",
-        "penacastillo",
-        "torrelavega",
-        "los valles",
-        "santiago de compostela",
-        "pamplona",
-      ].map(normalizeBasic);
+      const CENTER_TO_PROVINCE = {};
+      const CITY_TO_PROVINCE = {
+        NARON: "A CORUÑA (GALICIA)",
+        "NARÓN": "A CORUÑA (GALICIA)",
+        ONDARA: "ALICANTE (COMUNITAT VALENCIANA)",
+      };
 
-      function isExclusiveStore(store) {
-        const centroNorm = normalizeBasic(store.centro);
-        const propNorm = normalizeBasic(store.propietario);
-        const combined = centroNorm + " " + propNorm;
-        return EXCLUSIVE_KEYWORDS.some((kw) => combined.includes(kw));
+      function inferProvincia(centro, provinciaExcel) {
+        if (provinciaExcel && provinciaExcel.trim() !== "") {
+          return provinciaExcel.trim().toUpperCase();
+        }
+        const centroNorm = normalizarCentro(centro);
+        if (CENTER_TO_PROVINCE[centroNorm]) {
+          return CENTER_TO_PROVINCE[centroNorm];
+        }
+        const tokens = centroNorm
+          .split(/[,\-()]/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+        for (let i = tokens.length - 1; i >= 0; i--) {
+          const token = tokens[i];
+          if (CITY_TO_PROVINCE[token]) {
+            return CITY_TO_PROVINCE[token];
+          }
+        }
+        return "";
+      }
+
+      function parseFecha(fecha) {
+        const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+        const match = fecha.match(regex);
+        if (!match) return null;
+        const day = Number(match[1]);
+        const month = Number(match[2]);
+        const year = Number(match[3]);
+        const d = new Date(year, month - 1, day);
+        if (
+          d.getFullYear() !== year ||
+          d.getMonth() !== month - 1 ||
+          d.getDate() !== day
+        ) {
+          return null;
+        }
+        return d;
+      }
+
+      function isValidFecha(fecha) {
+        if (!fecha) return true;
+        return parseFecha(fecha) !== null;
       }
 
       function media(valores) {
@@ -221,23 +248,30 @@
           (v) => typeof v === "number" && !isNaN(v)
         );
         if (nums.length === 0) return null;
-        return nums.reduce((sum, v) => sum + v, 0) / nums.length;
+        const total = nums.reduce((sum, v) => sum + v, 0);
+        return total / nums.length;
       }
 
       function porcentajeSi(valores) {
         const valid = valores.filter((v) => v === "Sí" || v === "No");
         if (valid.length === 0) return null;
-        const si = valid.filter((v) => v === "Sí").length;
-        return (si / valid.length) * 100;
+        const countSi = valid.filter((v) => v === "Sí").length;
+        return (countSi / valid.length) * 100;
       }
 
       function donutStyle(percent) {
-        const value = percent ? Math.min(Math.max(percent, 0), 100) : 0;
+        const value = percent && percent > 0 ? Math.min(percent, 100) : 0;
         const color =
           percent !== null && percent >= 85 ? "#16a34a" : "#dc2626";
         return {
           background: `conic-gradient(${color} ${value * 3.6}deg, #e5e7eb 0deg)`,
         };
+      }
+
+      function kpiBadgeClass(percent) {
+        if (percent === null) return "bg-gray-200 text-gray-700";
+        if (percent >= 85) return "bg-green-100 text-green-800";
+        return "bg-red-100 text-red-700";
       }
 
       function delegadoColor(delegado) {
@@ -252,16 +286,6 @@
           backgroundColor: `hsl(${hue}, 75%, 90%)`,
           color: `hsl(${hue}, 35%, 28%)`,
         };
-      }
-
-      function aarBadgeClass(status) {
-        if (status === "Sí")
-          return "bg-green-100 text-green-800 border border-green-300";
-        if (status === "No")
-          return "bg-red-100 text-red-700 border border-red-300";
-        if (status === "En formación")
-          return "bg-amber-100 text-amber-800 border border-amber-300";
-        return "bg-gray-100 text-gray-700 border border-gray-300";
       }
 
       function getUniqueSorted(values) {
@@ -280,7 +304,8 @@
           (v) => v.hit === "Sí" || v.hit === "No"
         );
         if (hits.length === 0) return null;
-        return hits.some((v) => v.hit === "Sí") ? "Sí" : "No";
+        const anyYes = hits.some((v) => v.hit === "Sí");
+        return anyYes ? "Sí" : "No";
       }
 
       function formatFechaHora(iso) {
@@ -290,189 +315,156 @@
         return d.toLocaleString("es-ES");
       }
 
-      function isValidFecha(fecha) {
-        if (!fecha) return true;
-        const re = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-        const m = fecha.match(re);
-        if (!m) return false;
-        const d = new Date(
-          Number(m[3]),
-          Number(m[2]) - 1,
-          Number(m[1])
-        );
-        return (
-          d.getFullYear() === Number(m[3]) &&
-          d.getMonth() === Number(m[2]) - 1 &&
-          d.getDate() === Number(m[1])
-        );
-      }
-
       function deriveRespAudio(store) {
         if (store.responsableAudio && store.responsableAudio.trim()) {
           return store.responsableAudio;
         }
-        const visitas = [...(store.visitas || [])].reverse();
-        const v = visitas.find((vv) => vv.responsable);
-        return v ? v.responsable : "";
+        const visitas = store.visitas || [];
+        const copia = [...visitas].reverse();
+        const visitaConResp = copia.find((v) => v.responsable);
+        return visitaConResp ? visitaConResp.responsable : "";
       }
 
       function deriveCentroAAR(store) {
-        const vals = (store.visitas || [])
+        const visitas = store.visitas || [];
+        const valores = visitas
           .map((v) => v.centroAAR)
-          .filter(
-            (v) =>
-              v === "Sí" || v === "No" || v === "En formación"
-          );
-        if (vals.length === 0) return "";
-        if (vals.includes("En formación")) return "En formación";
-        if (vals.includes("Sí")) return "Sí";
-        if (vals.includes("No")) return "No";
+          .filter((v) => v === "Sí" || v === "No" || v === "En formación");
+        if (valores.length === 0) return store.centroAAR || "";
+        if (valores.includes("Sí")) return "Sí";
+        if (valores.includes("En formación")) return "En formación";
+        if (valores.includes("No")) return "No";
         return "";
       }
 
-      function sumVentas(hist) {
-        if (!Array.isArray(hist)) return 0;
-        return hist.reduce(
-          (acc, a) =>
-            acc +
-            (typeof a.ventas === "number" && !isNaN(a.ventas)
-              ? a.ventas
-              : 0),
-          0
+      function computePointAverages(visits) {
+        const sums = Array(TOTAL_CHECKLIST_ITEMS).fill(0);
+        const counts = Array(TOTAL_CHECKLIST_ITEMS).fill(0);
+        visits.forEach((v) => {
+          if (!v.pointFlags || !Array.isArray(v.pointFlags)) return;
+          v.pointFlags.forEach((val, idx) => {
+            if (idx >= TOTAL_CHECKLIST_ITEMS) return;
+            if (val === 0 || val === 1) {
+              sums[idx] += val;
+              counts[idx] += 1;
+            }
+          });
+        });
+        return sums.map((sum, idx) =>
+          counts[idx] === 0 ? null : (sum / counts[idx]) * 100
         );
       }
 
-      function sumObjetivo(hist) {
-        if (!Array.isArray(hist)) return 0;
-        return hist.reduce(
-          (acc, a) =>
-            acc +
-            (typeof a.objetivo === "number" && !isNaN(a.objetivo)
-              ? a.objetivo
-              : 0),
-          0
-        );
+      // =====================
+      // Centros exclusivos (config fijo)
+      // =====================
+
+      const EXCLUSIVE_CENTER_NAMES = [
+        "FUENLABRADA PASEO DE LA ESTACION",
+        "FUENLABRADA PASEO DE LA ESTACIÓN",
+        "REINA MERCEDES",
+        "DELICIAS ZARAGOZA",
+        "PEÑACASTILLO",
+        "PENACASTILLO",
+        "TORRELAVEGA",
+        "LOS VALLES",
+        "SANTIAGO DE COMPOSTELA",
+        "PAMPLONA CENTRO EXCLUSIVO",
+      ];
+
+      const EXCLUSIVE_CENTERS = EXCLUSIVE_CENTER_NAMES.map(normalizeBasic);
+
+      function isExclusiveStore(store) {
+        const centroNorm = normalizeBasic(store.centro);
+        return EXCLUSIVE_CENTERS.includes(centroNorm);
       }
 
-      /*************************************************
-       * 3. Componente principal
-       *************************************************/
+      const ACCION_TIPOS = [
+        "Stand",
+        "Mailing",
+        "Cashback",
+        "Azafata calle",
+        "Ruleta",
+        "Acción colectivo",
+        "Call center",
+        "Acción derivación tienda",
+        "Derivación colectivo",
+      ];
+
+      // =====================
+      // Componente principal
+      // =====================
+
       function App() {
         const [pin, setPin] = useState("");
         const [authorized, setAuthorized] = useState(false);
 
+        const [search, setSearch] = useState("");
+        const [filterCodigo, setFilterCodigo] = useState("");
+        const [filterPropietario, setFilterPropietario] = useState("");
+        const [filterCentro, setFilterCentro] = useState("");
+        const [filterProvincia, setFilterProvincia] = useState("");
+        const [filterDelegado, setFilterDelegado] = useState("");
+        const [filterResponsableAudio, setFilterResponsableAudio] =
+          useState("");
+        const [filterCentroAAR, setFilterCentroAAR] = useState("");
+        const [filterCorreo, setFilterCorreo] = useState("");
+
         const [storesInput, setStoresInput] = useState("");
         const [stores, setStores] = useState([]);
-        const [showCarga, setShowCarga] = useState(false);
         const [expandedStoreId, setExpandedStoreId] = useState(null);
         const [dashboardStoreId, setDashboardStoreId] = useState(null);
+        const [showCarga, setShowCarga] = useState(false);
         const [lastSavedAt, setLastSavedAt] = useState(null);
 
-        // filtros
-        const [search, setSearch] = useState("");
-        const [fCodigo, setFCodigo] = useState("");
-        const [fPropietario, setFPropietario] = useState("");
-        const [fCentro, setFCentro] = useState("");
-        const [fProvincia, setFProvincia] = useState("");
-        const [fCorreo, setFCorreo] = useState("");
-        const [fDelegado, setFDelegado] = useState("");
-        const [fRespAudio, setFRespAudio] = useState("");
-        const [fCentroAAR, setFCentroAAR] = useState("");
+        const [checklistViewValue, setChecklistViewValue] =
+          useState("global"); // "global" o id de centro como string
 
-        // Carga desde localStorage
         useEffect(() => {
           try {
             const raw = localStorage.getItem("seguimientoAudioV1");
             if (!raw) return;
             const parsed = JSON.parse(raw);
             if (parsed.stores) {
-              const normalized = parsed.stores.map((s, idx) => {
-                // compatibilidad antigua
-                let accionesHistorial = Array.isArray(
-                  s.accionesHistorial
-                )
-                  ? s.accionesHistorial.map((a) => ({
-                      tipo: a.tipo || "",
-                      fecha: a.fecha || "",
-                      derivaciones:
-                        typeof a.derivaciones === "number"
-                          ? a.derivaciones
-                          : a.derivaciones
-                          ? Number(a.derivaciones) || null
-                          : null,
-                      ventas:
-                        typeof a.ventas === "number"
-                          ? a.ventas
-                          : a.ventas
-                          ? Number(a.ventas) || null
-                          : null,
-                      objetivo:
-                        typeof a.objetivo === "number"
-                          ? a.objetivo
-                          : a.objetivo
-                          ? Number(a.objetivo) || null
-                          : null,
-                    }))
-                  : null;
-
-                // si veníamos del modelo antiguo (campos sueltos)
-                if (!accionesHistorial) {
-                  const anyOld =
-                    s.acciones ||
-                    s.fechaAcciones ||
-                    s.derivaciones ||
-                    s.ventasMensuales ||
-                    s.objetivoMensual;
-                  if (anyOld) {
-                    accionesHistorial = [
-                      {
-                        tipo: s.acciones || "",
-                        fecha: s.fechaAcciones || "",
-                        derivaciones: s.derivaciones
-                          ? Number(s.derivaciones) || null
-                          : null,
-                        ventas: s.ventasMensuales
-                          ? Number(s.ventasMensuales) || null
-                          : null,
-                        objetivo: s.objetivoMensual
-                          ? Number(s.objetivoMensual) || null
-                          : null,
-                      },
-                    ];
-                  } else {
-                    accionesHistorial = [createEmptyAccion()];
-                  }
-                }
-
-                return {
-                  ...s,
-                  id: idx + 1,
-                  centroRegional: normalizarDelegado(
-                    s.centroRegional || ""
-                  ),
-                  accionesHistorial,
-                };
-              });
-              setStores(normalized);
+              const normalizedStores = parsed.stores.map((s, idx) => ({
+                ...s,
+                id: idx + 1,
+                centroRegional: normalizarDelegado(s.centroRegional || ""),
+                visitas:
+                  s.visitas && s.visitas.length
+                    ? s.visitas.map((v, vidx) => ({
+                        id: v.id ?? vidx + 1,
+                        fecha: v.fecha || "",
+                        responsable: v.responsable || "",
+                        excelName: v.excelName || "",
+                        hit: v.hit || "",
+                        checklist:
+                          typeof v.checklist === "number"
+                            ? v.checklist
+                            : v.checklist ?? null,
+                        centroAAR: v.centroAAR || "",
+                        pointFlags: v.pointFlags || null,
+                      }))
+                    : createEmptyVisits(),
+                exclusiveActions: s.exclusiveActions || [],
+              }));
+              setStores(normalizedStores);
             }
             if (parsed.lastSavedAt) setLastSavedAt(parsed.lastSavedAt);
           } catch (e) {
-            console.error("Error cargando nube/localStorage", e);
+            console.error("Error al cargar de la nube/localStorage", e);
           }
         }, []);
 
         function handlePin() {
-          if (pin.trim().toUpperCase() === "AR4321") {
-            setAuthorized(true);
-          }
+          if (pin.trim().toUpperCase() === "AR4321") setAuthorized(true);
         }
 
-        /*********** Listado de centros pegado desde Excel ***********/
         function handleApplyStores() {
           if (!storesInput.trim()) return;
           let lines = storesInput
             .split("\n")
-            .map((l) => l.trim())
+            .map((line) => line.trim())
             .filter(Boolean);
 
           if (
@@ -493,21 +485,22 @@
               correo = "",
               centroRegional = "",
             ] = parts;
-
+            const provinciaInferida = inferProvincia(centro, provincia);
+            const delegadoNormalizado = normalizarDelegado(centroRegional);
             return {
               id: index + 1,
               raw,
               codigo,
               propietario,
               centro,
-              provincia,
+              provincia: provinciaInferida,
               correo,
-              centroRegional: normalizarDelegado(centroRegional),
+              centroRegional: delegadoNormalizado,
               region: "",
               responsableAudio: "",
               centroAAR: "",
               visitas: createEmptyVisits(),
-              accionesHistorial: [createEmptyAccion()],
+              exclusiveActions: [],
             };
           });
 
@@ -516,59 +509,75 @@
           setDashboardStoreId(null);
         }
 
-        /*********** Actualizar campos ***********/
         function updateStoreField(id, field, value) {
           setStores((prev) =>
-            prev.map((s) =>
-              s.id === id ? { ...s, [field]: value } : s
+            prev.map((store) =>
+              store.id === id ? { ...store, [field]: value } : store
             )
           );
         }
 
         function updateVisitField(storeId, visitId, field, value) {
           setStores((prev) =>
-            prev.map((s) => {
-              if (s.id !== storeId) return s;
+            prev.map((store) => {
+              if (store.id !== storeId) return store;
               return {
-                ...s,
-                visitas: s.visitas.map((v) =>
-                  v.id === visitId ? { ...v, [field]: value } : v
+                ...store,
+                visitas: store.visitas.map((visit) =>
+                  visit.id === visitId ? { ...visit, [field]: value } : visit
                 ),
               };
             })
           );
         }
 
-        function updateAccionField(storeId, index, field, value) {
+        function addExclusiveAction(storeId) {
           setStores((prev) =>
-            prev.map((s) => {
-              if (s.id !== storeId) return s;
-              const acciones = s.accionesHistorial || [];
-              const updated = acciones.map((a, i) =>
-                i === index ? { ...a, [field]: value } : a
-              );
-              return { ...s, accionesHistorial: updated };
+            prev.map((store) => {
+              if (store.id !== storeId) return store;
+              const current = store.exclusiveActions || [];
+              const nextId =
+                (current.reduce(
+                  (m, a) => (a.id && a.id > m ? a.id : m),
+                  0
+                ) || 0) + 1;
+              const newAction = {
+                id: nextId,
+                tipo: "",
+                fecha: "",
+                derivaciones: "",
+                ventas: "",
+                objetivo: "",
+              };
+              return {
+                ...store,
+                exclusiveActions: [...current, newAction],
+              };
             })
           );
         }
 
-        function addAccion(storeId) {
+        function updateExclusiveActionField(
+          storeId,
+          actionId,
+          field,
+          value
+        ) {
           setStores((prev) =>
-            prev.map((s) =>
-              s.id === storeId
-                ? {
-                    ...s,
-                    accionesHistorial: [
-                      ...(s.accionesHistorial || []),
-                      createEmptyAccion(),
-                    ],
-                  }
-                : s
-            )
+            prev.map((store) => {
+              if (store.id !== storeId) return store;
+              return {
+                ...store,
+                exclusiveActions: (store.exclusiveActions || []).map(
+                  (act) =>
+                    act.id === actionId ? { ...act, [field]: value } : act
+                ),
+              };
+            })
           );
         }
 
-        /*********** Lectura de Excel y F90 ***********/
+        // --------- LECTURA DE EXCEL CHECKLIST (F90 + columna F) ---------
         function handleChecklistFileChange(storeId, visitId, event) {
           const file = event.target.files?.[0];
           if (!file) return;
@@ -583,101 +592,91 @@
           reader.onload = (ev) => {
             try {
               const data = ev.target.result;
-              let checklistFromF90Set = false;
+              if (!window.XLSX || !isExcel) {
+                console.warn("XLSX no disponible o archivo no Excel");
+                return;
+              }
+              const wb = XLSX.read(data, { type: "array" });
 
-              if (isExcel && window.XLSX) {
-                const wb = XLSX.read(data, { type: "array" });
+              // Buscar la hoja "PROCESOS BASICOS" / "PROCESOS BÁSICOS"
+              let sheetName = wb.SheetNames[0];
+              const preferred = wb.SheetNames.find((name) =>
+                normalizeBasic(name).includes("procesos")
+              );
+              if (preferred) sheetName = preferred;
 
-                const targetSheetName =
-                  wb.SheetNames.find((name) => {
-                    const n = normalizeBasic(name);
-                    return n.includes("proceso") && n.includes("basic");
-                  }) || wb.SheetNames[0];
+              const sheet = wb.Sheets[sheetName];
 
-                const sheet = wb.Sheets[targetSheetName];
-                if (sheet) {
-                  const cell = sheet["F90"];
-                  let checklistF90 = null;
-                  if (cell && cell.v != null) {
-                    let rawVal = cell.v;
-                    if (typeof rawVal === "number") {
-                      let v = rawVal;
-                      if (v <= 1) v = v * 100;
-                      checklistF90 = v;
-                    } else if (typeof rawVal === "string") {
-                      const m = rawVal
-                        .replace(",", ".")
-                        .match(/(\d{1,3}(?:\.\d+)?)/);
-                      if (m) {
-                        let v = parseFloat(m[1]);
-                        if (v <= 1) v = v * 100;
-                        checklistF90 = v;
-                      }
-                    }
+              // 1) Leer F90 -> % checklist global
+              let checklistF90 = null;
+              const cellF90 = sheet["F90"];
+              if (cellF90 && cellF90.v != null) {
+                let rawVal = cellF90.v;
+                if (typeof rawVal === "number") {
+                  let v = rawVal;
+                  if (v <= 1) v = v * 100;
+                  checklistF90 = v;
+                } else if (typeof rawVal === "string") {
+                  const m = rawVal
+                    .replace(",", ".")
+                    .match(/(\d{1,3}(?:\.\d+)?)/);
+                  if (m) {
+                    let v = parseFloat(m[1]);
+                    if (v <= 1) v = v * 100;
+                    checklistF90 = v;
                   }
-                  if (checklistF90 !== null && !isNaN(checklistF90)) {
-                    updateVisitField(
-                      storeId,
-                      visitId,
-                      "checklist",
-                      checklistF90
-                    );
-                    checklistFromF90Set = true;
-                  }
-
-                  const csv = XLSX.utils.sheet_to_csv(sheet);
-                  parseFromText(csv, checklistFromF90Set);
                 }
-              } else {
-                const text =
-                  typeof data === "string"
-                    ? data
-                    : new TextDecoder("utf-8").decode(data);
-                parseFromText(text, checklistFromF90Set);
+              }
+
+              if (checklistF90 !== null && !isNaN(checklistF90)) {
+                updateVisitField(
+                  storeId,
+                  visitId,
+                  "checklist",
+                  checklistF90
+                );
+              }
+
+              // 2) Leer toda la columna F como 0/1 para criterios
+              const flags = [];
+              for (let row = 1; row <= 200; row++) {
+                const c = sheet["F" + row];
+                if (!c || c.v === undefined || c.v === null) continue;
+                let v = c.v;
+                if (typeof v === "string") {
+                  v = v.trim();
+                  if (v === "") continue;
+                  if (v === "0" || v === "1") v = Number(v);
+                }
+                if (v === 0 || v === 1) {
+                  flags.push(v);
+                }
+              }
+              const trimmed = flags.slice(0, TOTAL_CHECKLIST_ITEMS);
+              if (trimmed.length > 0) {
+                updateVisitField(storeId, visitId, "pointFlags", trimmed);
+              }
+
+              // 3) Detectar HIT en texto (opcional)
+              const csv = XLSX.utils.sheet_to_csv(sheet);
+              if (csv) {
+                const reHit = /hit[^a-zA-Z0-9]{0,15}(s[ií]|no)/i;
+                const mHit = csv.match(reHit);
+                if (mHit) {
+                  const val = mHit[1].toLowerCase().startsWith("s")
+                    ? "Sí"
+                    : "No";
+                  updateVisitField(storeId, visitId, "hit", val);
+                }
               }
             } catch (e) {
-              console.error("Error leyendo Excel checklist", e);
+              console.error("Error leyendo Excel de checklist", e);
             }
           };
 
-          if (isExcel) {
-            reader.readAsArrayBuffer(file);
-          } else {
-            reader.readAsText(file);
-          }
-
-          function parseFromText(text, checklistAlreadySet) {
-            if (!text) return;
-
-            const reHit = /hit[^a-zA-Z0-9]{0,15}(s[ií]|no)/i;
-            const mHit = text.match(reHit);
-            if (mHit) {
-              const val = mHit[1].toLowerCase().startsWith("s")
-                ? "Sí"
-                : "No";
-              updateVisitField(storeId, visitId, "hit", val);
-            }
-
-            if (!checklistAlreadySet) {
-              const reCap =
-                /capacitaci[oó]n[^0-9%]{0,80}(\d{1,3})\s*%/i;
-              const mCap = text.match(reCap);
-              if (mCap) {
-                const n = Number(mCap[1]);
-                if (!isNaN(n)) {
-                  updateVisitField(
-                    storeId,
-                    visitId,
-                    "checklist",
-                    n
-                  );
-                }
-              }
-            }
-          }
+          reader.readAsArrayBuffer(file);
         }
 
-        /*********** Guardar / cargar nube ***********/
         function saveToCloud() {
           try {
             const payload = {
@@ -690,7 +689,7 @@
             );
             setLastSavedAt(payload.lastSavedAt);
           } catch (e) {
-            console.error("Error guardando nube/localStorage", e);
+            console.error("Error al guardar en nube/localStorage", e);
           }
         }
 
@@ -700,165 +699,120 @@
             if (!raw) return;
             const parsed = JSON.parse(raw);
             if (parsed.stores) {
-              const normalized = parsed.stores.map((s, idx) => {
-                let accionesHistorial = Array.isArray(
-                  s.accionesHistorial
-                )
-                  ? s.accionesHistorial.map((a) => ({
-                      tipo: a.tipo || "",
-                      fecha: a.fecha || "",
-                      derivaciones:
-                        typeof a.derivaciones === "number"
-                          ? a.derivaciones
-                          : a.derivaciones
-                          ? Number(a.derivaciones) || null
-                          : null,
-                      ventas:
-                        typeof a.ventas === "number"
-                          ? a.ventas
-                          : a.ventas
-                          ? Number(a.ventas) || null
-                          : null,
-                      objetivo:
-                        typeof a.objetivo === "number"
-                          ? a.objetivo
-                          : a.objetivo
-                          ? Number(a.objetivo) || null
-                          : null,
-                    }))
-                  : [createEmptyAccion()];
-
-                return {
-                  ...s,
-                  id: idx + 1,
-                  centroRegional: normalizarDelegado(
-                    s.centroRegional || ""
-                  ),
-                  accionesHistorial,
-                };
-              });
-              setStores(normalized);
+              const normalizedStores = parsed.stores.map((s, idx) => ({
+                ...s,
+                id: idx + 1,
+                centroRegional: normalizarDelegado(s.centroRegional || ""),
+                visitas:
+                  s.visitas && s.visitas.length
+                    ? s.visitas.map((v, vidx) => ({
+                        id: v.id ?? vidx + 1,
+                        fecha: v.fecha || "",
+                        responsable: v.responsable || "",
+                        excelName: v.excelName || "",
+                        hit: v.hit || "",
+                        checklist:
+                          typeof v.checklist === "number"
+                            ? v.checklist
+                            : v.checklist ?? null,
+                        centroAAR: v.centroAAR || "",
+                        pointFlags: v.pointFlags || null,
+                      }))
+                    : createEmptyVisits(),
+                exclusiveActions: s.exclusiveActions || [],
+              }));
+              setStores(normalizedStores);
               setExpandedStoreId(null);
               setDashboardStoreId(null);
             }
             if (parsed.lastSavedAt) setLastSavedAt(parsed.lastSavedAt);
           } catch (e) {
-            console.error("Error leyendo nube/localStorage", e);
+            console.error("Error al leer de nube/localStorage", e);
           }
         }
 
-        /*********** Filtros y métricas ***********/
-        const filteredStores = stores.filter((s) => {
-          const respAudio = deriveRespAudio(s);
-          const centroAAR = deriveCentroAAR(s);
-          const textoGlobal = (
-            s.codigo +
-            " " +
-            s.propietario +
-            " " +
-            s.centro +
-            " " +
-            s.provincia +
-            " " +
-            s.centroRegional +
-            " " +
-            s.correo +
-            " " +
-            respAudio +
-            " " +
-            centroAAR
+        // ------------ FILTRADO Y ORDENACIÓN LISTADO CENTROS ------------
+        const filteredStores = stores.filter((store) => {
+          const respAudio = deriveRespAudio(store);
+          const centroAARValor = deriveCentroAAR(store);
+          const textoGlobal = `${store.codigo} ${store.propietario} ${store.centro} ${store.provincia} ${store.centroRegional} ${store.correo} ${respAudio} ${centroAARValor}`.toLowerCase();
+
+          if (search && !textoGlobal.includes(search.toLowerCase()))
+            return false;
+
+          if (
+            filterCodigo &&
+            store.codigo.toLowerCase() !== filterCodigo.toLowerCase()
           )
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-
-          const searchNorm = search
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-
-          if (search && !textoGlobal.includes(searchNorm))
             return false;
-          if (fCodigo && s.codigo !== fCodigo) return false;
-          if (fPropietario && s.propietario !== fPropietario)
+
+          if (
+            filterPropietario &&
+            store.propietario.toLowerCase() !==
+              filterPropietario.toLowerCase()
+          )
             return false;
-          if (fCentro && s.centro !== fCentro) return false;
-          if (fProvincia && s.provincia !== fProvincia) return false;
-          if (fCorreo && s.correo !== fCorreo) return false;
-          if (fDelegado && s.centroRegional !== fDelegado) return false;
-          if (fRespAudio && respAudio !== fRespAudio) return false;
-          if (fCentroAAR && centroAAR !== fCentroAAR) return false;
+
+          if (
+            filterCentro &&
+            store.centro.toLowerCase() !== filterCentro.toLowerCase()
+          )
+            return false;
+
+          if (
+            filterCorreo &&
+            store.correo.toLowerCase() !== filterCorreo.toLowerCase()
+          )
+            return false;
+
+          if (
+            filterProvincia &&
+            store.provincia.toLowerCase() !== filterProvincia.toLowerCase()
+          )
+            return false;
+
+          if (
+            filterDelegado &&
+            store.centroRegional.toLowerCase() !==
+              filterDelegado.toLowerCase()
+          )
+            return false;
+
+          if (
+            filterResponsableAudio &&
+            respAudio.toLowerCase() !==
+              filterResponsableAudio.toLowerCase()
+          )
+            return false;
+
+          if (
+            filterCentroAAR &&
+            centroAARValor.toLowerCase() !== filterCentroAAR.toLowerCase()
+          )
+            return false;
+
           return true;
         });
 
-        const sortedStores = [...filteredStores].sort((a, b) => {
+        const sortedFilteredStores = [...filteredStores].sort((a, b) => {
           const da = (a.centroRegional || "").toLowerCase();
           const db = (b.centroRegional || "").toLowerCase();
-          const cmp = da.localeCompare(db, "es", { sensitivity: "base" });
-          if (cmp !== 0) return cmp;
+          const cmpD = da.localeCompare(db, "es", { sensitivity: "base" });
+          if (cmpD !== 0) return cmpD;
           const ca = (a.centro || "").toLowerCase();
           const cb = (b.centro || "").toLowerCase();
           return ca.localeCompare(cb, "es", { sensitivity: "base" });
         });
 
-        const allVisits = stores.flatMap((s) => s.visitas);
-        const visitasConExcel = allVisits.filter(
-          (v) => v.excelName && v.excelName !== ""
-        );
-        const totalVisitas = visitasConExcel.length;
-        const totalTiendas = stores.length;
-        const tiendasConVisita = stores.filter((s) =>
-          s.visitas.some((v) => v.excelName && v.excelName !== "")
-        ).length;
-        const pctTiendasVisitadas =
-          totalTiendas > 0
-            ? (tiendasConVisita / totalTiendas) * 100
-            : 0;
-
-        const checklistMediaGlobal = media(
-          visitasConExcel.map((v) => v.checklist)
-        );
-        const hitMediaGlobal = porcentajeSi(
-          visitasConExcel.map((v) => v.hit)
-        );
-        const aplicaHitGlobal = aplicaHitTexto(visitasConExcel);
-        const algunFechaInvalida = allVisits.some(
-          (v) => v.fecha && !isValidFecha(v.fecha)
-        );
-
-        const dashboardStore =
-          stores.find((s) => s.id === dashboardStoreId) ||
-          stores[0] ||
-          null;
-
-        let dashVisitas = [];
-        let dashChecklistMedio = null;
-        let dashAplicaHit = null;
-        if (dashboardStore) {
-          dashVisitas = dashboardStore.visitas.filter(
-            (v) => v.excelName && v.excelName !== ""
-          );
-          dashChecklistMedio = media(
-            dashVisitas.map((v) => v.checklist)
-          );
-          dashAplicaHit = aplicaHitTexto(dashVisitas);
-        }
-
-        const opcionesCodigo = getUniqueSorted(
-          stores.map((s) => s.codigo)
-        );
+        const opcionesCodigo = getUniqueSorted(stores.map((s) => s.codigo));
         const opcionesPropietario = getUniqueSorted(
           stores.map((s) => s.propietario)
         );
-        const opcionesCentro = getUniqueSorted(
-          stores.map((s) => s.centro)
-        );
+        const opcionesCentro = getUniqueSorted(stores.map((s) => s.centro));
         const opcionesProvincia = getUniqueSorted(
           stores.map((s) => s.provincia)
         );
-        const opcionesCorreo = getUniqueSorted(
-          stores.map((s) => s.correo)
-        );
+        const opcionesCorreo = getUniqueSorted(stores.map((s) => s.correo));
         const opcionesDelegado = getUniqueSorted(
           stores.map((s) => s.centroRegional)
         );
@@ -866,1418 +820,1465 @@
           stores.map((s) => deriveRespAudio(s))
         );
 
-        /*********** Centros exclusivos ***********/
-        const exclusiveCenters = stores.filter(isExclusiveStore);
-
-        const totalExclusivos = exclusiveCenters.length;
-        const totalVentasExclusivos = exclusiveCenters.reduce(
-          (acc, s) => acc + sumVentas(s.accionesHistorial),
-          0
+        // ------------ MÉTRICAS GLOBALES Y POR CENTRO ------------
+        const allVisits = stores.flatMap((s) => s.visitas);
+        const visitasValidasGlobal = allVisits.filter(
+          (v) => v.excelName && v.excelName !== ""
         );
-        const totalObjetivoExclusivos = exclusiveCenters.reduce(
-          (acc, s) => acc + sumObjetivo(s.accionesHistorial),
-          0
-        );
-        const pctObjetivoGlobalExclusivos =
-          totalObjetivoExclusivos > 0
-            ? (totalVentasExclusivos / totalObjetivoExclusivos) * 100
-            : null;
+        const totalVisitas = visitasValidasGlobal.length;
+        const totalTiendas = stores.length;
+        const tiendasConVisita = stores.filter((s) =>
+          s.visitas.some((v) => v.excelName && v.excelName !== "")
+        ).length;
+        const porcentajeTiendasVisitadas =
+          totalTiendas > 0
+            ? (tiendasConVisita / totalTiendas) * 100
+            : 0;
 
-        /*********** Sección AAR ***********/
-        const aarCenters = stores.filter((s) => {
-          const state = deriveCentroAAR(s);
-          return state === "Sí" || state === "En formación";
+        const checklistMediaGlobal = media(
+          visitasValidasGlobal.map((v) => v.checklist)
+        );
+        const hitMediaGlobal = porcentajeSi(
+          visitasValidasGlobal.map((v) => v.hit)
+        );
+        const aplicaHitGlobal = aplicaHitTexto(visitasValidasGlobal);
+
+        const algunFechaInvalida = allVisits.some(
+          (v) => v.fecha && !isValidFecha(v.fecha)
+        );
+
+        const globalPointAverages = computePointAverages(
+          visitasValidasGlobal
+        );
+
+        const storePointAveragesMap = new Map();
+        stores.forEach((store) => {
+          const vv = store.visitas.filter(
+            (v) => v.excelName && v.excelName !== ""
+          );
+          storePointAveragesMap.set(store.id, computePointAverages(vv));
         });
 
-        /*********** Render ***********/
-        if (!authorized) {
-          return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-100">
-              <div className="bg-white p-8 rounded-2xl shadow-xl w-80">
-                <h2 className="text-xl font-bold text-center mb-4">
-                  Acceso Plataforma
-                </h2>
-                <input
-                  type="password"
-                  className="w-full p-2 border rounded mb-4"
-                  placeholder="Introduce PIN"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handlePin();
-                  }}
-                />
-                <button
-                  onClick={handlePin}
-                  className="w-full bg-blue-600 text-white py-2 rounded-xl shadow"
-                >
-                  Entrar
-                </button>
-              </div>
-            </div>
+        // Dashboard por centro
+        const dashboardStore =
+          stores.find((s) => s.id === dashboardStoreId) ||
+          stores[0] ||
+          null;
+
+        let dashVisitasConExcel = [];
+        let dashChecklistMedio = null;
+        let dashAplicaHit = null;
+
+        if (dashboardStore) {
+          dashVisitasConExcel = dashboardStore.visitas.filter(
+            (v) => v.excelName && v.excelName !== ""
           );
+          dashChecklistMedio = media(
+            dashVisitasConExcel.map((v) => v.checklist)
+          );
+          dashAplicaHit = aplicaHitTexto(dashVisitasConExcel);
         }
 
+        // Checklist view (mapa horizontal)
+        let currentPointAverages = globalPointAverages;
+        if (checklistViewValue !== "global") {
+          const id = Number(checklistViewValue);
+          const arr = storePointAveragesMap.get(id);
+          if (arr) currentPointAverages = arr;
+        }
+
+        // Centros exclusivos
+        const exclusiveStores = stores.filter(isExclusiveStore);
+
+        const exclusiveSummaries = exclusiveStores.map((store) => {
+          const actions = store.exclusiveActions || [];
+          const ventas = actions.reduce(
+            (sum, a) => sum + (Number(a.ventas) || 0),
+            0
+          );
+          const objetivo = actions.reduce(
+            (sum, a) => sum + (Number(a.objetivo) || 0),
+            0
+          );
+          const pct = objetivo > 0 ? (ventas / objetivo) * 100 : null;
+          return { store, ventas, objetivo, pct };
+        });
+
+        const totalVentasEx = exclusiveSummaries.reduce(
+          (s, x) => s + x.ventas,
+          0
+        );
+        const totalObjetivoEx = exclusiveSummaries.reduce(
+          (s, x) => s + x.objetivo,
+          0
+        );
+        const pctGlobalEx =
+          totalObjetivoEx > 0 ? (totalVentasEx / totalObjetivoEx) * 100 : null;
+
+        // Audiología avanzada remoto (AAR)
+        const aarCenters = stores.filter((s) => {
+          const val = deriveCentroAAR(s);
+          return val === "Sí" || val === "En formación";
+        });
+
+        function aarBadgeClass(val) {
+          if (val === "Sí") return "bg-green-100 text-green-800";
+          if (val === "En formación") return "bg-amber-100 text-amber-800";
+          if (val === "No") return "bg-red-100 text-red-700";
+          return "bg-gray-100 text-gray-700";
+        }
+
+        // =====================
+        // RENDER
+        // =====================
+
         return (
-          <div className="min-h-screen bg-gray-100 font-sans p-6 space-y-10">
-            {/* HEADER */}
-            <header className="bg-red-600 text-white p-5 rounded-2xl shadow flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">🎧</span>
-                <h1 className="text-2xl font-bold">
-                  Seguimiento de procesos de Audio
-                </h1>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <div className="flex gap-2">
+          <div className="min-h-screen bg-gray-100 font-sans">
+            {!authorized ? (
+              <div className="flex items-center justify-center h-screen">
+                <div className="bg-white p-10 rounded-2xl shadow-xl w-80">
+                  <h2 className="text-xl font-bold text-center mb-4">
+                    Acceso Plataforma
+                  </h2>
+                  <input
+                    type="password"
+                    className="w-full p-2 border rounded mb-4"
+                    placeholder="Introduce PIN"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handlePin();
+                    }}
+                  />
                   <button
-                    onClick={saveToCloud}
-                    className="bg-white text-red-600 px-3 py-1 rounded-xl shadow text-xs font-semibold"
+                    onClick={handlePin}
+                    className="w-full bg-blue-600 text-white py-2 rounded-xl shadow"
                   >
-                    Guardar en nube
+                    Entrar
                   </button>
                 </div>
-                <button
-                  onClick={loadFromCloud}
-                  className="bg-red-500 text-white px-3 py-1 rounded-xl shadow text-xs font-semibold border border-white/40"
-                >
-                  Actualizar desde nube
-                </button>
-                <p className="text-[10px] text-white/80">
-                  Última actualización:{" "}
-                  <span className="font-semibold">
-                    {formatFechaHora(lastSavedAt)}
-                  </span>
-                </p>
               </div>
-            </header>
-
-            {/* MAPA CHECKLIST + DASHBOARD GENERAL */}
-            <section className="space-y-6">
-              {/* Mapa checklist */}
-              <div className="bg-white p-6 rounded-2xl shadow">
-                <h2 className="font-bold text-lg mb-2">
-                  Mapa horizontal de checklist de visita
-                </h2>
-                <p className="text-gray-500 mb-4 text-sm">
-                  Etapas del proceso de audio según el checklist oficial.
-                </p>
-                <div className="flex gap-4 overflow-x-auto pb-2">
-                  {CHECKLIST.map((stage) => (
-                    <div
-                      key={stage.etapa}
-                      className="min-w-[260px] max-w-xs bg-gray-50 border rounded-2xl px-4 py-3 flex-shrink-0"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-red-700">
-                          {stage.etapa}
-                        </span>
-                        <span className="text-[10px] text-gray-500">
-                          {stage.items.length} pts
-                        </span>
-                      </div>
-                      <ul className="space-y-1">
-                        {stage.items.map((item, idx) => (
-                          <li
-                            key={idx}
-                            className="text-[11px] text-gray-700 flex gap-1"
-                          >
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                            <span className="leading-tight">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dashboard */}
-              <div className="bg-white p-4 rounded-2xl shadow">
-                <h3 className="font-bold text-sm mb-3">
-                  Dashboard horizontal (general y por centro)
-                </h3>
-                {stores.length === 0 ? (
-                  <p className="text-xs text-gray-500">
-                    Aún no hay tiendas cargadas. Pega el listado en la sección
-                    de LISTADO DE CENTROS.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* General */}
-                    <div className="bg-gray-50 rounded-2xl px-4 py-3 border flex flex-col gap-2">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="text-xs font-semibold">
-                            General red Afflelou Audio
-                          </p>
-                          <p className="text-[10px] text-gray-500">
-                            Visitas contabilizadas por Excel adjunto (F90).
-                          </p>
-                        </div>
-                        <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700"
-                          style={donutStyle(checklistMediaGlobal)}
-                        >
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                            <span>
-                              {checklistMediaGlobal !== null
-                                ? `${checklistMediaGlobal.toFixed(0)}%`
-                                : "--"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-[10px] space-y-1">
-                        <p>
-                          Total tiendas: <strong>{totalTiendas}</strong> · con
-                          al menos 1 visita:{" "}
-                          <strong>
-                            {tiendasConVisita} (
-                            {pctTiendasVisitadas.toFixed(0)}%)
-                          </strong>
-                        </p>
-                        <p>
-                          Total visitas (Excels adjuntos):{" "}
-                          <strong>{totalVisitas}</strong>
-                        </p>
-                        <p>
-                          Checklist medio global (F90):{" "}
-                          {checklistMediaGlobal !== null
-                            ? `${checklistMediaGlobal.toFixed(0)}%`
-                            : "-"}
-                        </p>
-                        <p>
-                          % aplicación HIT global:{" "}
-                          {hitMediaGlobal !== null
-                            ? `${hitMediaGlobal.toFixed(0)}%`
-                            : "-"}
-                          {aplicaHitGlobal && (
-                            <span>
-                              {" "}
-                              · Aplica HIT:{" "}
-                              <strong>{aplicaHitGlobal}</strong>
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      {algunFechaInvalida && (
-                        <p className="text-[10px] text-red-500 mt-1">
-                          Hay fechas con formato incorrecto (usa{" "}
-                          <strong>dd/mm/aaaa</strong>).
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Por centro */}
-                    <div className="bg-gray-50 rounded-2xl px-4 py-3 border flex flex-col gap-2">
-                      <div className="flex items-center justify-between mb-2 gap-2">
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold mb-1">
-                            Detalle por centro
-                          </p>
-                          <select
-                            className="w-full border rounded px-2 py-1 text-[11px]"
-                            value={dashboardStoreId || ""}
-                            onChange={(e) =>
-                              setDashboardStoreId(
-                                e.target.value
-                                  ? Number(e.target.value)
-                                  : null
-                              )
-                            }
-                          >
-                            {stores.length > 0 && (
-                              <>
-                                <option value="">
-                                  (Selecciona un centro)
-                                </option>
-                                {stores.map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.centro || s.codigo}
-                                  </option>
-                                ))}
-                              </>
-                            )}
-                          </select>
-                        </div>
-                        <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700"
-                          style={donutStyle(dashChecklistMedio)}
-                        >
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                            <span>
-                              {dashChecklistMedio !== null
-                                ? `${dashChecklistMedio.toFixed(0)}%`
-                                : "--"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {dashboardStore ? (
-                        <div className="text-[10px] space-y-1">
-                          <p className="font-semibold">
-                            {dashboardStore.centro ||
-                              dashboardStore.codigo}
-                            {isExclusiveStore(dashboardStore) && (
-                              <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-amber-300 text-amber-900 text-[9px] font-semibold">
-                                EXCLUSIVO
-                              </span>
-                            )}
-                          </p>
-                          <p>
-                            Provincia:{" "}
-                            <span
-                              className="inline-block px-2 py-0.5 rounded-full"
-                              style={delegadoColor(
-                                dashboardStore.centroRegional
-                              )}
-                            >
-                              {dashboardStore.provincia ||
-                                "Provincia sin definir"}
-                            </span>
-                          </p>
-                          <p>
-                            Delegado:{" "}
-                            <span
-                              className="inline-block px-2 py-0.5 rounded-full"
-                              style={delegadoColor(
-                                dashboardStore.centroRegional
-                              )}
-                            >
-                              {dashboardStore.centroRegional ||
-                                "Sin delegado"}
-                            </span>
-                          </p>
-                          <p>
-                            Nº visitas (Excels adjuntos):{" "}
-                            <strong>{dashVisitas.length}</strong>
-                          </p>
-                          <p>
-                            % checklist medio (F90):{" "}
-                            {dashChecklistMedio !== null
-                              ? `${dashChecklistMedio.toFixed(0)}%`
-                              : "-"}
-                          </p>
-                          <p>
-                            Aplica HIT:{" "}
-                            <strong>
-                              {dashAplicaHit || "-"}
-                            </strong>
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-gray-500">
-                          Selecciona un centro para ver su detalle.
-                        </p>
-                      )}
-                    </div>
+            ) : (
+              <div className="p-6">
+                {/* HEADER */}
+                <header className="bg-red-600 text-white p-5 rounded-2xl shadow flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">🎧</span>
+                    <h1 className="text-2xl font-bold">
+                      Seguimiento de procesos de Audio
+                    </h1>
                   </div>
-                )}
-              </div>
-            </section>
-
-            {/* LISTADO DE CENTROS */}
-            <section className="bg-white p-6 rounded-2xl shadow">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-bold text-lg bg-red-600 text-white inline-flex items-center px-4 py-2 rounded-2xl">
-                    LISTADO DE CENTROS
-                  </h3>
-                  <button
-                    className="text-xs px-3 py-1 rounded-full border border-red-300 text-red-700 bg-white/80 hover:bg-white"
-                    onClick={() => setShowCarga((p) => !p)}
-                  >
-                    {showCarga
-                      ? "Ocultar edición de listado"
-                      : "Cargar / editar listado desde Excel"}
-                  </button>
-                </div>
-
-                {showCarga && (
-                  <div className="bg-gray-50 border rounded-2xl p-3">
-                    <p className="text-xs text-gray-600 mb-2">
-                      Pega aquí el listado de centros desde Excel (una fila por
-                      línea, campos separados por tabulador):<br />
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveToCloud}
+                        className="bg-white text-red-600 px-3 py-1 rounded-xl shadow text-xs font-semibold"
+                      >
+                        Guardar en nube
+                      </button>
+                      <button
+                        onClick={loadFromCloud}
+                        className="bg-red-500 text-white px-3 py-1 rounded-xl shadow text-xs font-semibold border border-white/40"
+                      >
+                        Actualizar desde nube
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-white/80">
+                      Última actualización:{" "}
                       <span className="font-semibold">
-                        CODIGO · PROPIETARIO · CENTRO · PROVINCIA · CORREO ·
-                        REGIONAL
+                        {formatFechaHora(lastSavedAt)}
                       </span>
                     </p>
-                    <textarea
-                      className="w-full p-2 border rounded mb-2 text-xs h-20"
-                      value={storesInput}
-                      onChange={(e) => setStoresInput(e.target.value)}
-                    ></textarea>
-                    <button
-                      onClick={handleApplyStores}
-                      className="text-xs px-3 py-1 rounded-full bg-red-600 text-white font-semibold shadow"
-                    >
-                      Aplicar/actualizar listado
-                    </button>
                   </div>
-                )}
+                </header>
 
-                {/* Filtros */}
-                <div className="bg-red-600 text-white rounded-2xl p-3">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-xl">🔍</span>
-                      <input
-                        type="text"
-                        placeholder="Buscar en todos los campos..."
-                        className="flex-1 px-3 py-1 rounded text-xs text-gray-800"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                    <div className="text-[10px] opacity-90 lg:text-right">
-                      Filtros por columna (como en Excel).
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex flex-nowrap gap-2 text-[11px] overflow-x-auto">
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[110px]"
-                      value={fCodigo}
-                      onChange={(e) => setFCodigo(e.target.value)}
-                    >
-                      <option value="">Código (todos)</option>
-                      {opcionesCodigo.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[130px]"
-                      value={fPropietario}
-                      onChange={(e) =>
-                        setFPropietario(e.target.value)
-                      }
-                    >
-                      <option value="">Propietario (todos)</option>
-                      {opcionesPropietario.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[160px]"
-                      value={fCentro}
-                      onChange={(e) => setFCentro(e.target.value)}
-                    >
-                      <option value="">Centro (todos)</option>
-                      {opcionesCentro.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
-                      value={fProvincia}
-                      onChange={(e) => setFProvincia(e.target.value)}
-                    >
-                      <option value="">Provincia (todas)</option>
-                      {opcionesProvincia.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
-                      value={fCorreo}
-                      onChange={(e) => setFCorreo(e.target.value)}
-                    >
-                      <option value="">Correo (todos)</option>
-                      {opcionesCorreo.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[150px]"
-                      value={fDelegado}
-                      onChange={(e) => setFDelegado(e.target.value)}
-                    >
-                      <option value="">Delegado (todos)</option>
-                      {opcionesDelegado.map((op) => (
-                        <option key={op} value={op}>
-                          {op || "Sin delegado"}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[150px]"
-                      value={fRespAudio}
-                      onChange={(e) => setFRespAudio(e.target.value)}
-                    >
-                      <option value="">Resp. audio (todos)</option>
-                      {opcionesRespAudio.map((op) => (
-                        <option key={op} value={op}>
-                          {op}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      className="bg-white text-red-700 rounded px-2 py-1 min-w-[120px]"
-                      value={fCentroAAR}
-                      onChange={(e) => setFCentroAAR(e.target.value)}
-                    >
-                      <option value="">Centro AAR (todos)</option>
-                      <option value="Sí">Sí</option>
-                      <option value="No">No</option>
-                      <option value="En formación">En formación</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Tabla principal */}
-                {stores.length === 0 ? (
-                  <p className="text-xs text-gray-500">
-                    Aún no hay centros cargados. Pega el listado arriba y pulsa
-                    "Aplicar/actualizar listado".
-                  </p>
-                ) : (
-                  <div className="overflow-y-auto">
-                    <table className="w-full text-[11px] border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="text-left px-2 py-2">Nº</th>
-                          <th className="text-left px-2 py-2">Código</th>
-                          <th className="text-left px-2 py-2">
-                            Propietario
-                          </th>
-                          <th className="text-left px-2 py-2">Centro</th>
-                          <th className="text-left px-2 py-2">
-                            Provincia
-                          </th>
-                          <th className="text-left px-2 py-2">Correo</th>
-                          <th className="text-left px-2 py-2">
-                            Delegado regional
-                          </th>
-                          <th className="text-left px-2 py-2">
-                            Resp. audio
-                          </th>
-                          <th className="text-left px-2 py-2">
-                            Centro AAR
-                          </th>
-                          <th className="text-right px-2 py-2">
-                            Nº visitas
-                          </th>
-                          <th className="text-right px-2 py-2">
-                            Checklist medio %
-                          </th>
-                          <th className="text-right px-2 py-2">
-                            Aplica HIT
-                          </th>
-                          <th className="text-center px-2 py-2">
-                            Visitas / checklist (4)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedStores.map((store, index) => {
-                          const visitasCentro = store.visitas.filter(
-                            (v) => v.excelName && v.excelName !== ""
-                          );
-                          const checklistMedioCentro = media(
-                            visitasCentro.map((v) => v.checklist)
-                          );
-                          const aplicaHitCentro =
-                            aplicaHitTexto(visitasCentro);
-                          const respAudioCentro =
-                            deriveRespAudio(store);
-                          const centroAARValor =
-                            deriveCentroAAR(store);
-                          const isExpanded =
-                            expandedStoreId === store.id;
-                          const isExclusive = isExclusiveStore(store);
-
-                          const checklistBadge =
-                            checklistMedioCentro !== null ? (
-                              <span
-                                className={
-                                  "inline-block min-w-[40px] px-2 py-0.5 rounded-full " +
-                                  (checklistMedioCentro >= 85
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-700")
-                                }
-                              >
-                                {checklistMedioCentro.toFixed(0)}%
-                              </span>
-                            ) : (
-                              "-"
-                            );
-
-                          return (
-                            <React.Fragment key={store.id}>
-                              <tr className="border-b hover:bg-gray-50 align-top">
-                                <td className="px-2 py-1">{index + 1}</td>
-                                <td className="px-2 py-1">
-                                  <span className="font-semibold">
-                                    {store.codigo || "-"}
-                                  </span>
-                                </td>
-                                <td className="px-2 py-1">
-                                  <span
-                                    className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
-                                  >
-                                    {store.propietario || "-"}
-                                  </span>
-                                </td>
-                                <td className="px-2 py-1">
-                                  <span
-                                    className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
-                                  >
-                                    {store.centro || "-"}
-                                  </span>
-                                  {isExclusive && (
-                                    <span className="ml-1 inline-block px-2 py-0.5 rounded-full bg-amber-300 text-amber-900 text-[9px] font-semibold">
-                                      EXCLUSIVO
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="px-2 py-1">
-                                  <span
-                                    className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
-                                  >
-                                    {store.provincia || "-"}
-                                  </span>
-                                </td>
-                                <td className="px-2 py-1 break-all">
-                                  <span
-                                    className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
-                                  >
-                                    {store.correo || "-"}
-                                  </span>
-                                </td>
-                                <td className="px-2 py-1">
-                                  <span
-                                    className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
-                                  >
-                                    {store.centroRegional ||
-                                      "Sin delegado"}
-                                  </span>
-                                </td>
-                                <td className="px-2 py-1">
-                                  <span
-                                    className="inline-block px-2 py-0.5 rounded-full"
-                                    style={delegadoColor(
-                                      store.centroRegional
-                                    )}
-                                  >
-                                    {respAudioCentro || "-"}
-                                  </span>
-                                </td>
-                                <td className="px-2 py-1">
-                                  {centroAARValor ? (
-                                    <span
-                                      className={
-                                        "inline-block px-2 py-0.5 rounded-full " +
-                                        aarBadgeClass(centroAARValor)
-                                      }
-                                    >
-                                      {centroAARValor}
-                                    </span>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </td>
-                                <td className="px-2 py-1 text-right">
-                                  {visitasCentro.length}
-                                </td>
-                                <td className="px-2 py-1 text-right">
-                                  {checklistBadge}
-                                </td>
-                                <td className="px-2 py-1 text-right">
-                                  {aplicaHitCentro || "-"}
-                                </td>
-                                <td className="px-2 py-1 text-center">
-                                  <button
-                                    className="text-[10px] px-2 py-1 rounded-full border border-red-400 text-red-600 hover:bg-red-50"
-                                    onClick={() =>
-                                      setExpandedStoreId(
-                                        isExpanded ? null : store.id
-                                      )
-                                    }
-                                  >
-                                    {isExpanded
-                                      ? "Ocultar visitas"
-                                      : "Ver/editar visitas"}
-                                  </button>
-                                </td>
-                              </tr>
-
-                              {isExpanded && (
-                                <tr className="bg-gray-50 border-b">
-                                  <td
-                                    colSpan={13}
-                                    className="px-3 py-3"
-                                  >
-                                    <div className="text-[11px]">
-                                      <p className="font-semibold mb-2">
-                                        Visitas y checklist adjunto (hasta 4) –{" "}
-                                        {store.centro || store.codigo}
-                                      </p>
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                                        {store.visitas.map((visit) => (
-                                          <div
-                                            key={visit.id}
-                                            className="border rounded-xl p-2 bg-white"
-                                          >
-                                            <p className="font-semibold mb-1">
-                                              Visita {visit.id}
-                                            </p>
-                                            <input
-                                              type="text"
-                                              placeholder="dd/mm/aaaa"
-                                              className={
-                                                "w-full border rounded px-2 py-1 mb-1 " +
-                                                (visit.fecha &&
-                                                !isValidFecha(
-                                                  visit.fecha
-                                                )
-                                                  ? "border-red-500 bg-red-50"
-                                                  : "")
-                                              }
-                                              value={visit.fecha}
-                                              onChange={(e) =>
-                                                updateVisitField(
-                                                  store.id,
-                                                  visit.id,
-                                                  "fecha",
-                                                  e.target.value
-                                                )
-                                              }
-                                            />
-                                            <select
-                                              className="w-full border rounded px-2 py-1 mb-1"
-                                              value={
-                                                visit.responsable || ""
-                                              }
-                                              onChange={(e) =>
-                                                updateVisitField(
-                                                  store.id,
-                                                  visit.id,
-                                                  "responsable",
-                                                  e.target.value
-                                                )
-                                              }
-                                            >
-                                              <option value="">
-                                                Resp. audio
-                                              </option>
-                                              <option value="Sonia">
-                                                Sonia
-                                              </option>
-                                              <option value="Ary Rojas">
-                                                Ary Rojas
-                                              </option>
-                                            </select>
-
-                                            <label className="inline-flex items-center px-3 py-1 rounded-xl border cursor-pointer hover:bg-gray-50 mb-1">
-                                              <span className="text-[11px] font-semibold">
-                                                Adjuntar Excel checklist
-                                              </span>
-                                              <input
-                                                type="file"
-                                                accept=".xlsx,.xls,.csv"
-                                                className="hidden"
-                                                onChange={(e) =>
-                                                  handleChecklistFileChange(
-                                                    store.id,
-                                                    visit.id,
-                                                    e
-                                                  )
-                                                }
-                                              />
-                                            </label>
-                                            <p className="text-[10px] text-gray-500 mb-1 truncate">
-                                              {visit.excelName ||
-                                                "Sin archivo"}
-                                            </p>
-
-                                            <div className="grid grid-cols-3 gap-1 mt-1">
-                                              <div>
-                                                <p className="text-[10px] mb-0.5">
-                                                  Checklist % (F90)
-                                                </p>
-                                                <input
-                                                  type="number"
-                                                  min={0}
-                                                  max={100}
-                                                  className="w-full border rounded px-1 py-0.5"
-                                                  value={
-                                                    visit.checklist ?? ""
-                                                  }
-                                                  onChange={(e) => {
-                                                    const val =
-                                                      e.target.value;
-                                                    const num =
-                                                      val === ""
-                                                        ? null
-                                                        : Number(val);
-                                                    updateVisitField(
-                                                      store.id,
-                                                      visit.id,
-                                                      "checklist",
-                                                      isNaN(num)
-                                                        ? null
-                                                        : num
-                                                    );
-                                                  }}
-                                                />
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] mb-0.5">
-                                                  HIT
-                                                </p>
-                                                <select
-                                                  className="w-full border rounded px-1 py-0.5"
-                                                  value={visit.hit || ""}
-                                                  onChange={(e) =>
-                                                    updateVisitField(
-                                                      store.id,
-                                                      visit.id,
-                                                      "hit",
-                                                      e.target.value
-                                                    )
-                                                  }
-                                                >
-                                                  <option value="">
-                                                    -
-                                                  </option>
-                                                  <option value="Sí">
-                                                    Sí
-                                                  </option>
-                                                  <option value="No">
-                                                    No
-                                                  </option>
-                                                </select>
-                                              </div>
-                                              <div>
-                                                <p className="text-[10px] mb-0.5">
-                                                  Centro AAR
-                                                </p>
-                                                <select
-                                                  className="w-full border rounded px-1 py-0.5"
-                                                  value={
-                                                    visit.centroAAR || ""
-                                                  }
-                                                  onChange={(e) =>
-                                                    updateVisitField(
-                                                      store.id,
-                                                      visit.id,
-                                                      "centroAAR",
-                                                      e.target.value
-                                                    )
-                                                  }
-                                                >
-                                                  <option value="">
-                                                    -
-                                                  </option>
-                                                  <option value="Sí">
-                                                    Sí
-                                                  </option>
-                                                  <option value="No">
-                                                    No
-                                                  </option>
-                                                  <option value="En formación">
-                                                    En formación
-                                                  </option>
-                                                </select>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <p className="text-[10px] text-gray-500">
-                                        Adjunta el Excel del checklist: la
-                                        plataforma lee automáticamente el %
-                                        global desde la celda{" "}
-                                        <strong>F90</strong> de la hoja tipo{" "}
-                                        <strong>PROCESOS BÁSICOS</strong>.
-                                      </p>
-                                      <button
-                                        className="mt-3 text-[11px] px-3 py-1 rounded-full bg-red-600 text-white font-semibold"
-                                        onClick={() =>
-                                          setExpandedStoreId(null)
-                                        }
-                                      >
-                                        Guardar visitas de este centro
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-
-                    {/* KPIs globales tabla */}
-                    <div className="mt-4 text-[11px] text-gray-600 flex flex-wrap gap-3">
-                      <span>
-                        Total tiendas: <strong>{totalTiendas}</strong>
-                      </span>
-                      <span>
-                        Tiendas con al menos 1 visita (Excel):{" "}
-                        <strong>
-                          {tiendasConVisita} (
-                          {pctTiendasVisitadas.toFixed(0)}%)
-                        </strong>
-                      </span>
-                      <span>
-                        Total visitas (Excels adjuntos):{" "}
-                        <strong>{totalVisitas}</strong>
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* CENTROS EXCLUSIVOS */}
-            <section className="bg-white p-6 rounded-2xl shadow">
-              <h3 className="font-bold text-lg mb-3 text-red-700">
-                CENTROS EXCLUSIVOS
-              </h3>
-
-              {exclusiveCenters.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  No se han detectado centros exclusivos.
-                </p>
-              ) : (
-                <>
-                  {/* Dashboard centros exclusivos */}
-                  <div className="bg-gray-50 rounded-2xl px-4 py-3 border mb-4 text-[11px] flex flex-wrap gap-4 items-center justify-between">
-                    <div>
-                      <p className="font-semibold">
-                        Dashboard centros exclusivos
-                      </p>
-                      <p>
-                        Nº centros exclusivos:{" "}
-                        <strong>{totalExclusivos}</strong>
-                      </p>
-                      <p>
-                        Ventas mensuales totales:{" "}
-                        <strong>
-                          {totalVentasExclusivos.toLocaleString("es-ES", {
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          })}{" "}
-                          €
-                        </strong>
-                      </p>
-                      <p>
-                        Objetivo mensual total:{" "}
-                        <strong>
-                          {totalObjetivoExclusivos.toLocaleString(
-                            "es-ES",
-                            {
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0,
-                            }
-                          )}{" "}
-                          €
-                        </strong>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] text-gray-600">
-                        % objetivo global
-                      </span>
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700"
-                        style={donutStyle(pctObjetivoGlobalExclusivos)}
-                      >
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                          <span>
-                            {pctObjetivoGlobalExclusivos !== null
-                              ? `${pctObjetivoGlobalExclusivos.toFixed(0)}%`
-                              : "--"}
-                          </span>
-                        </div>
+                {/* MAPA + DASHBOARD */}
+                <section className="mt-6 space-y-6">
+                  {/* Mapa checklist */}
+                  <div className="bg-white p-6 rounded-2xl shadow">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h2 className="font-bold text-lg">
+                          Mapa horizontal de checklist de visita
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                          Etapas del proceso de audio según el checklist
+                          oficial. Muestra el % medio de aplicación por
+                          criterio (columna F del Excel).
+                        </p>
+                      </div>
+                      <div className="text-[11px] flex items-center gap-1">
+                        <span className="mr-1">Ver datos de:</span>
+                        <select
+                          className="border rounded px-2 py-1"
+                          value={checklistViewValue}
+                          onChange={(e) =>
+                            setChecklistViewValue(e.target.value)
+                          }
+                        >
+                          <option value="global">Global</option>
+                          {stores.map((s) => (
+                            <option key={s.id} value={String(s.id)}>
+                              {s.centro || s.codigo}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Tabla exclusivos */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-[11px] border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b">
-                          <th className="px-2 py-2 text-left">Nº</th>
-                          <th className="px-2 py-2 text-left">Código</th>
-                          <th className="px-2 py-2 text-left">Centro</th>
-                          <th className="px-2 py-2 text-left">
-                            Provincia
-                          </th>
-                          <th className="px-2 py-2 text-left">
-                            Delegado
-                          </th>
-                          <th className="px-2 py-2 text-left">
-                            Resp. audio
-                          </th>
-                          <th className="px-2 py-2 text-left">
-                            Acciones +
-                          </th>
-                          <th className="px-2 py-2 text-left">
-                            Fecha acción
-                          </th>
-                          <th className="px-2 py-2 text-right">
-                            Derivaciones
-                          </th>
-                          <th className="px-2 py-2 text-right">
-                            Ventas mensuales €
-                          </th>
-                          <th className="px-2 py-2 text-right">
-                            Objetivo mensual €
-                          </th>
-                          <th className="px-2 py-2 text-right">
-                            % resultado
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {exclusiveCenters.map((store, idx) => {
-                          const respAudioCentro = deriveRespAudio(store);
-                          const acciones = store.accionesHistorial || [
-                            createEmptyAccion(),
-                          ];
-
-                          const ventasCentro = sumVentas(acciones);
-                          const objetivoCentro = sumObjetivo(acciones);
-                          const ratio =
-                            objetivoCentro > 0
-                              ? (ventasCentro / objetivoCentro) * 100
-                              : null;
-
-                          let ratioClass = "";
-                          if (ratio !== null) {
-                            if (ratio >= 100)
-                              ratioClass =
-                                "bg-green-100 text-green-800";
-                            else if (ratio >= 70)
-                              ratioClass =
-                                "bg-amber-100 text-amber-800";
-                            else ratioClass = "bg-red-100 text-red-700";
-                          }
-
-                          return (
-                            <tr
-                              key={store.id}
-                              className="border-b hover:bg-gray-50 align-top"
-                            >
-                              <td className="px-2 py-1 align-top">
-                                {idx + 1}
-                              </td>
-                              <td className="px-2 py-1 align-top">
-                                <span className="font-semibold">
-                                  {store.codigo}
-                                </span>
-                              </td>
-                              <td className="px-2 py-1 align-top">
-                                <span
-                                  className="inline-block px-2 py-0.5 rounded-full"
-                                  style={delegadoColor(
-                                    store.centroRegional
-                                  )}
+                    <div className="flex gap-4 overflow-x-auto pb-2">
+                      {CHECKLIST.map((stage, stageIdx) => (
+                        <div
+                          key={stage.etapa}
+                          className="min-w-[260px] max-w-xs bg-gray-50 border rounded-2xl px-4 py-3 flex-shrink-0"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[11px] font-bold uppercase tracking-wide text-red-700">
+                              {stage.etapa}
+                            </span>
+                            <span className="text-[10px] text-gray-500">
+                              {stage.items.length} pts
+                            </span>
+                          </div>
+                          <ul className="space-y-1">
+                            {stage.items.map((item, itemIdx) => {
+                              const globalIdx =
+                                STAGE_OFFSETS[stageIdx] + itemIdx;
+                              const pct =
+                                currentPointAverages[globalIdx] ?? null;
+                              const colorClass =
+                                pct === null
+                                  ? "bg-gray-200 text-gray-700"
+                                  : pct >= 85
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-700";
+                              return (
+                                <li
+                                  key={itemIdx}
+                                  className="text-[11px] text-gray-700 flex items-center justify-between gap-2"
                                 >
-                                  {store.centro}
-                                </span>
-                              </td>
-                              <td className="px-2 py-1 align-top">
-                                <span
-                                  className="inline-block px-2 py-0.5 rounded-full"
-                                  style={delegadoColor(
-                                    store.centroRegional
-                                  )}
-                                >
-                                  {store.provincia}
-                                </span>
-                              </td>
-                              <td className="px-2 py-1 align-top">
-                                <span
-                                  className="inline-block px-2 py-0.5 rounded-full"
-                                  style={delegadoColor(
-                                    store.centroRegional
-                                  )}
-                                >
-                                  {store.centroRegional ||
-                                    "Sin delegado"}
-                                </span>
-                              </td>
-                              <td className="px-2 py-1 align-top">
-                                <span
-                                  className="inline-block px-2 py-0.5 rounded-full"
-                                  style={delegadoColor(
-                                    store.centroRegional
-                                  )}
-                                >
-                                  {respAudioCentro || "-"}
-                                </span>
-                              </td>
-
-                              {/* Acciones */}
-                              <td className="px-2 py-1 align-top">
-                                {acciones.map((a, i) => (
-                                  <div
-                                    key={i}
-                                    className="mb-1 flex items-center gap-1"
-                                  >
-                                    <select
-                                      className="w-full border rounded px-2 py-1"
-                                      value={a.tipo || ""}
-                                      onChange={(e) =>
-                                        updateAccionField(
-                                          store.id,
-                                          i,
-                                          "tipo",
-                                          e.target.value
-                                        )
-                                      }
-                                    >
-                                      <option value="">
-                                        Selecciona acción
-                                      </option>
-                                      {ACCION_OPTIONS.map((opt) => (
-                                        <option
-                                          key={opt}
-                                          value={opt}
-                                        >
-                                          {opt}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                ))}
-                                <button
-                                  className="mt-1 text-[10px] px-2 py-1 rounded-full border border-red-400 text-red-600 hover:bg-red-50"
-                                  onClick={() => addAccion(store.id)}
-                                >
-                                  + Añadir acción
-                                </button>
-                              </td>
-
-                              {/* Fecha acción */}
-                              <td className="px-2 py-1 align-top">
-                                {acciones.map((a, i) => (
-                                  <div key={i} className="mb-1">
-                                    <input
-                                      type="text"
-                                      placeholder="dd/mm/aaaa"
-                                      className="w-full border rounded px-2 py-1"
-                                      value={a.fecha || ""}
-                                      onChange={(e) =>
-                                        updateAccionField(
-                                          store.id,
-                                          i,
-                                          "fecha",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                ))}
-                              </td>
-
-                              {/* Derivaciones */}
-                              <td className="px-2 py-1 align-top text-right">
-                                {acciones.map((a, i) => (
-                                  <div key={i} className="mb-1">
-                                    <input
-                                      type="number"
-                                      className="w-full border rounded px-2 py-1 text-right"
-                                      value={a.derivaciones ?? ""}
-                                      onChange={(e) => {
-                                        const v =
-                                          e.target.value === ""
-                                            ? null
-                                            : Number(e.target.value);
-                                        updateAccionField(
-                                          store.id,
-                                          i,
-                                          "derivaciones",
-                                          isNaN(v) ? null : v
-                                        );
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </td>
-
-                              {/* Ventas */}
-                              <td className="px-2 py-1 align-top text-right">
-                                {acciones.map((a, i) => (
-                                  <div key={i} className="mb-1">
-                                    <input
-                                      type="number"
-                                      className="w-full border rounded px-2 py-1 text-right"
-                                      value={a.ventas ?? ""}
-                                      onChange={(e) => {
-                                        const v =
-                                          e.target.value === ""
-                                            ? null
-                                            : Number(e.target.value);
-                                        updateAccionField(
-                                          store.id,
-                                          i,
-                                          "ventas",
-                                          isNaN(v) ? null : v
-                                        );
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </td>
-
-                              {/* Objetivo */}
-                              <td className="px-2 py-1 align-top text-right">
-                                {acciones.map((a, i) => (
-                                  <div key={i} className="mb-1">
-                                    <input
-                                      type="number"
-                                      className="w-full border rounded px-2 py-1 text-right"
-                                      value={a.objetivo ?? ""}
-                                      onChange={(e) => {
-                                        const v =
-                                          e.target.value === ""
-                                            ? null
-                                            : Number(e.target.value);
-                                        updateAccionField(
-                                          store.id,
-                                          i,
-                                          "objetivo",
-                                          isNaN(v) ? null : v
-                                        );
-                                      }}
-                                    />
-                                  </div>
-                                ))}
-                              </td>
-
-                              {/* % resultado global del centro */}
-                              <td className="px-2 py-1 align-top text-right">
-                                {ratio !== null ? (
+                                  <span className="flex-1 leading-tight">
+                                    {item}
+                                  </span>
                                   <span
                                     className={
-                                      "inline-block min-w-[40px] px-2 py-0.5 rounded-full " +
-                                      ratioClass
+                                      "ml-2 px-2 py-0.5 rounded-full whitespace-nowrap " +
+                                      colorClass
                                     }
                                   >
-                                    {ratio.toFixed(0)}%
+                                    {pct === null
+                                      ? "-"
+                                      : `${pct.toFixed(0)}%`}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dashboard horizontal */}
+                  <div className="bg-white p-4 rounded-2xl shadow">
+                    <h3 className="font-bold text-sm mb-3">
+                      Dashboard horizontal (general y por centro)
+                    </h3>
+                    {stores.length === 0 ? (
+                      <p className="text-xs text-gray-500">
+                        Aún no hay tiendas cargadas. Pega el listado en la
+                        sección de LISTADO DE CENTROS.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* General */}
+                        <div className="bg-gray-50 rounded-2xl px-4 py-3 border flex flex-col gap-2">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="text-xs font-semibold">
+                                General red Afflelou Audio
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                Visitas contabilizadas por Excel adjunto
+                                (F90).
+                              </p>
+                            </div>
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700"
+                              style={donutStyle(checklistMediaGlobal)}
+                            >
+                              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                                <span>
+                                  {checklistMediaGlobal !== null
+                                    ? `${checklistMediaGlobal.toFixed(
+                                        0
+                                      )}%`
+                                    : "--"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-[10px] space-y-1">
+                            <p>
+                              Total tiendas:{" "}
+                              <strong>{totalTiendas}</strong> · con al menos 1
+                              visita:{" "}
+                              <strong>
+                                {tiendasConVisita} (
+                                {porcentajeTiendasVisitadas.toFixed(0)}%)
+                              </strong>
+                            </p>
+                            <p>
+                              Total visitas (Excels adjuntos):{" "}
+                              <strong>{totalVisitas}</strong>
+                            </p>
+                            <p>
+                              Checklist medio global (F90):{" "}
+                              {checklistMediaGlobal !== null
+                                ? `${checklistMediaGlobal.toFixed(0)}%`
+                                : "-"}
+                            </p>
+                            <p>
+                              % aplicación HIT global:{" "}
+                              {hitMediaGlobal !== null
+                                ? `${hitMediaGlobal.toFixed(0)}%`
+                                : "-"}
+                              {aplicaHitGlobal && (
+                                <span>
+                                  {" "}
+                                  · Aplica HIT:{" "}
+                                  <strong>{aplicaHitGlobal}</strong>
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Por centro */}
+                        <div className="bg-gray-50 rounded-2xl px-4 py-3 border flex flex-col gap-2">
+                          <div className="flex items-center justify-between mb-2 gap-2">
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold mb-1">
+                                Detalle por centro
+                              </p>
+                              <select
+                                className="w-full border rounded px-2 py-1 text-[11px]"
+                                value={dashboardStoreId || ""}
+                                onChange={(e) =>
+                                  setDashboardStoreId(
+                                    e.target.value
+                                      ? Number(e.target.value)
+                                      : null
+                                  )
+                                }
+                              >
+                                {stores.length === 0 && (
+                                  <option value="">
+                                    No hay centros cargados
+                                  </option>
+                                )}
+                                {stores.length > 0 && (
+                                  <>
+                                    <option value="">
+                                      (Selecciona un centro)
+                                    </option>
+                                    {stores.map((s) => (
+                                      <option key={s.id} value={s.id}>
+                                        {s.centro || s.codigo}
+                                      </option>
+                                    ))}
+                                  </>
+                                )}
+                              </select>
+                            </div>
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center text-[10px] font-bold text-red-700"
+                              style={donutStyle(dashChecklistMedio)}
+                            >
+                              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                                <span>
+                                  {dashChecklistMedio !== null
+                                    ? `${dashChecklistMedio.toFixed(
+                                        0
+                                      )}%`
+                                    : "--"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          {dashboardStore ? (
+                            <div className="text-[10px] space-y-1">
+                              <p className="font-semibold">
+                                {dashboardStore.centro ||
+                                  dashboardStore.codigo}
+                                {isExclusiveStore(dashboardStore) && (
+                                  <span className="ml-2 text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                    EXCLUSIVO
+                                  </span>
+                                )}
+                              </p>
+                              <p>
+                                Provincia:{" "}
+                                <span
+                                  className="inline-block px-2 py-0.5 rounded-full"
+                                  style={delegadoColor(
+                                    dashboardStore.centroRegional
+                                  )}
+                                >
+                                  {dashboardStore.provincia ||
+                                    "Provincia sin definir"}
+                                </span>
+                              </p>
+                              <p>
+                                Nº visitas (Excels adjuntos):{" "}
+                                <strong>
+                                  {dashVisitasConExcel.length}
+                                </strong>
+                              </p>
+                              <p>
+                                % checklist medio (F90):{" "}
+                                {dashChecklistMedio !== null
+                                  ? `${dashChecklistMedio.toFixed(0)}%`
+                                  : "-"}
+                              </p>
+                              <p>
+                                Aplica HIT:{" "}
+                                <strong>
+                                  {dashAplicaHit ? dashAplicaHit : "-"}
+                                </strong>
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-gray-500">
+                              Selecciona un centro en el desplegable para ver
+                              su detalle.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {algunFechaInvalida && (
+                      <p className="text-xs text-red-500 mt-3">
+                        Hay fechas con formato incorrecto. Usa siempre el
+                        formato <strong>dd/mm/aaaa</strong>.
+                      </p>
+                    )}
+                  </div>
+                </section>
+
+                {/* LISTADO DE CENTROS */}
+                <section className="mt-10 bg-white p-6 rounded-2xl shadow">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h3 className="font-bold text-lg bg-red-600 text-white inline-flex items-center px-4 py-2 rounded-2xl">
+                        LISTADO DE CENTROS
+                      </h3>
+                      <button
+                        className="text-xs px-3 py-1 rounded-full border border-red-300 text-red-700 bg-white/80 hover:bg-white"
+                        onClick={() => setShowCarga((p) => !p)}
+                      >
+                        {showCarga
+                          ? "Ocultar edición de listado"
+                          : "Cargar / editar listado desde Excel"}
+                      </button>
+                    </div>
+
+                    {showCarga && (
+                      <div className="bg-gray-50 border rounded-2xl p-3">
+                        <p className="text-xs text-gray-600 mb-2">
+                          Pega aquí el listado de centros desde Excel (una fila
+                          por línea, campos separados por tabulador):
+                          <br />
+                          <span className="font-semibold">
+                            CODIGO · PROPIETARIO · CENTRO · PROVINCIA · CORREO ·
+                            REGIONAL
+                          </span>
+                        </p>
+                        <textarea
+                          className="w-full p-2 border rounded mb-2 text-xs h-20"
+                          placeholder="Ejemplo:&#10;4ABB&#9;MAZA Oriol&#9;PAMPLONA C. Exclusivo&#9;NAVARRA&#9;navarra.pamplona.carrefour@afflelou.es&#9;Sonia Godino"
+                          value={storesInput}
+                          onChange={(e) => setStoresInput(e.target.value)}
+                        ></textarea>
+                        <button
+                          onClick={handleApplyStores}
+                          className="text-xs px-3 py-1 rounded-full bg-red-600 text-white font-semibold shadow"
+                        >
+                          Aplicar/actualizar listado
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Faldón rojo buscador + filtros */}
+                    <div className="bg-red-600 text-white rounded-2xl p-3">
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-xl">🔍</span>
+                          <input
+                            type="text"
+                            placeholder="Buscar en todos los campos..."
+                            className="flex-1 px-3 py-1 rounded text-xs text-gray-800"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="text-[10px] opacity-90 lg:text-right">
+                          Filtros por columna: selecciona un valor en cualquier
+                          desplegable para filtrar el listado (como en Excel).
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-nowrap gap-2 text-[11px] overflow-x-auto">
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[110px]"
+                          value={filterCodigo}
+                          onChange={(e) => setFilterCodigo(e.target.value)}
+                        >
+                          <option value="">Código (todos)</option>
+                          {opcionesCodigo.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[130px]"
+                          value={filterPropietario}
+                          onChange={(e) =>
+                            setFilterPropietario(e.target.value)
+                          }
+                        >
+                          <option value="">Propietario (todos)</option>
+                          {opcionesPropietario.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[160px]"
+                          value={filterCentro}
+                          onChange={(e) => setFilterCentro(e.target.value)}
+                        >
+                          <option value="">Centro (todos)</option>
+                          {opcionesCentro.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                          value={filterProvincia}
+                          onChange={(e) => setFilterProvincia(e.target.value)}
+                        >
+                          <option value="">Provincia (todas)</option>
+                          {opcionesProvincia.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                          value={filterCorreo}
+                          onChange={(e) => setFilterCorreo(e.target.value)}
+                        >
+                          <option value="">Correo (todos)</option>
+                          {opcionesCorreo.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[150px]"
+                          value={filterDelegado}
+                          onChange={(e) => setFilterDelegado(e.target.value)}
+                        >
+                          <option value="">Delegado (todos)</option>
+                          {opcionesDelegado.map((op) => (
+                            <option key={op} value={op}>
+                              {op || "Sin delegado"}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[150px]"
+                          value={filterResponsableAudio}
+                          onChange={(e) =>
+                            setFilterResponsableAudio(e.target.value)
+                          }
+                        >
+                          <option value="">Resp. audio (todos)</option>
+                          {opcionesRespAudio.map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="bg-white text-red-700 rounded px-2 py-1 min-w-[140px]"
+                          value={filterCentroAAR}
+                          onChange={(e) => setFilterCentroAAR(e.target.value)}
+                        >
+                          <option value="">Centro AAR (todos)</option>
+                          <option value="Sí">Sí</option>
+                          <option value="No">No</option>
+                          <option value="En formación">En formación</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Tabla sin scroll horizontal */}
+                    {stores.length === 0 ? (
+                      <p className="text-xs text-gray-500">
+                        Aún no hay centros cargados. Pega el listado arriba y
+                        pulsa "Aplicar/actualizar listado".
+                      </p>
+                    ) : (
+                      <div className="overflow-y-auto">
+                        <table className="w-full text-[11px] border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50 border-b">
+                              <th className="text-left px-2 py-2">Nº</th>
+                              <th className="text-left px-2 py-2">Código</th>
+                              <th className="text-left px-2 py-2">
+                                Propietario
+                              </th>
+                              <th className="text-left px-2 py-2">Centro</th>
+                              <th className="text-left px-2 py-2">
+                                Provincia
+                              </th>
+                              <th className="text-left px-2 py-2">Correo</th>
+                              <th className="text-left px-2 py-2">
+                                Delegado regional
+                              </th>
+                              <th className="text-left px-2 py-2">
+                                Resp. audio
+                              </th>
+                              <th className="text-left px-2 py-2">
+                                Centro AAR
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Nº visitas
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Checklist medio %
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Aplica HIT
+                              </th>
+                              <th className="text-center px-2 py-2">
+                                Visitas / checklist (4)
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedFilteredStores.map((store, index) => {
+                              const visitasConExcel = store.visitas.filter(
+                                (v) => v.excelName && v.excelName !== ""
+                              );
+                              const checklistMedioTienda = media(
+                                visitasConExcel.map((v) => v.checklist)
+                              );
+                              const aplicaHitTienda =
+                                aplicaHitTexto(visitasConExcel);
+
+                              const respAudioCentro = deriveRespAudio(store);
+                              const centroAARValor = deriveCentroAAR(store);
+                              const isExpanded =
+                                expandedStoreId === store.id;
+
+                              const checklistBadge =
+                                checklistMedioTienda !== null ? (
+                                  <span
+                                    className={`inline-block min-w-[40px] px-2 py-0.5 rounded-full ${
+                                      checklistMedioTienda >= 85
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-red-100 text-red-700"
+                                    }`}
+                                  >
+                                    {checklistMedioTienda.toFixed(0)}%
                                   </span>
                                 ) : (
                                   "-"
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </section>
+                                );
 
-            {/* AUDIOLOGÍA AVANZADA REMOTO (AAR) */}
-            <section className="bg-white p-6 rounded-2xl shadow">
-              <h3 className="font-bold text-lg mb-3 text-red-700">
-                AUDIOLOGÍA AVANZADA REMOTO (AAR)
-              </h3>
-              <p className="text-xs text-gray-600 mb-3">
-                Se muestran todos los centros con AAR marcado como{" "}
-                <strong>Sí</strong> o <strong>En formación</strong>. Estado
-                Centro AAR:{" "}
-                <span className="inline-flex items-center gap-1 mr-2">
-                  <span className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="text-[10px]">Sí</span>
-                </span>
-                <span className="inline-flex items-center gap-1 mr-2">
-                  <span className="w-3 h-3 rounded-full bg-red-500" />
-                  <span className="text-[10px]">No</span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-amber-400" />
-                  <span className="text-[10px]">En formación</span>
-                </span>
-              </p>
+                              const centroEsExclusivo =
+                                isExclusiveStore(store);
 
-              {aarCenters.length === 0 ? (
-                <p className="text-xs text-gray-500">
-                  No hay centros con AAR = Sí o En formación.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="px-2 py-2 text-left">Nº</th>
-                        <th className="px-2 py-2 text-left">Código</th>
-                        <th className="px-2 py-2 text-left">Centro</th>
-                        <th className="px-2 py-2 text-left">
-                          Provincia
-                        </th>
-                        <th className="px-2 py-2 text-left">
-                          Delegado
-                        </th>
-                        <th className="px-2 py-2 text-left">
-                          Resp. audio
-                        </th>
-                        <th className="px-2 py-2 text-left">
-                          Estado AAR
-                        </th>
-                        <th className="px-2 py-2 text-right">
-                          Nº visitas
-                        </th>
-                        <th className="px-2 py-2 text-right">
-                          Checklist medio %
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {aarCenters.map((store, idx) => {
-                        const visitasCentro = store.visitas.filter(
-                          (v) => v.excelName && v.excelName !== ""
-                        );
-                        const checklistMedioCentro = media(
-                          visitasCentro.map((v) => v.checklist)
-                        );
-                        const respAudioCentro =
-                          deriveRespAudio(store);
-                        const aarState = deriveCentroAAR(store);
+                              return (
+                                <React.Fragment key={store.id}>
+                                  <tr className="border-b hover:bg-gray-50 align-top">
+                                    <td className="px-2 py-1">
+                                      {index + 1}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span className="font-semibold">
+                                        {store.codigo || "-"}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      {store.propietario || "-"}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <div className="flex items-center gap-1">
+                                        <span>
+                                          {store.centro || "-"}
+                                        </span>
+                                        {centroEsExclusivo && (
+                                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                            EXCLUSIVO
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span
+                                        className="inline-block px-2 py-0.5 rounded-full"
+                                        style={delegadoColor(
+                                          store.centroRegional
+                                        )}
+                                      >
+                                        {store.provincia || "-"}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1 break-all">
+                                      {store.correo || "-"}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span
+                                        className="inline-block px-2 py-0.5 rounded-full"
+                                        style={delegadoColor(
+                                          store.centroRegional
+                                        )}
+                                      >
+                                        {store.centroRegional ||
+                                          "Sin delegado"}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      {respAudioCentro || "-"}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      <span
+                                        className={`inline-block px-2 py-0.5 rounded-full text-center ${aarBadgeClass(
+                                          centroAARValor
+                                        )}`}
+                                      >
+                                        {centroAARValor || "-"}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {visitasConExcel.length}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {checklistBadge}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {aplicaHitTienda || "-"}
+                                    </td>
+                                    <td className="px-2 py-1 text-center">
+                                      <button
+                                        className="text-[10px] px-2 py-1 rounded-full border border-red-400 text-red-600 hover:bg-red-50"
+                                        onClick={() =>
+                                          setExpandedStoreId(
+                                            isExpanded ? null : store.id
+                                          )
+                                        }
+                                      >
+                                        {isExpanded
+                                          ? "Ocultar visitas"
+                                          : "Ver/editar visitas"}
+                                      </button>
+                                    </td>
+                                  </tr>
 
-                        const checklistBadge =
-                          checklistMedioCentro !== null ? (
-                            <span
-                              className={
-                                "inline-block min-w-[40px] px-2 py-0.5 rounded-full " +
-                                (checklistMedioCentro >= 85
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-700")
-                              }
-                            >
-                              {checklistMedioCentro.toFixed(0)}%
-                            </span>
-                          ) : (
-                            "-"
-                          );
+                                  {isExpanded && (
+                                    <tr className="bg-gray-50 border-b">
+                                      <td
+                                        colSpan={13}
+                                        className="px-3 py-3"
+                                      >
+                                        <div className="text-[11px]">
+                                          <p className="font-semibold mb-2">
+                                            Visitas y checklist adjunto (hasta
+                                            4) –{" "}
+                                            {store.centro || store.codigo}
+                                          </p>
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                                            {store.visitas.map((visit) => (
+                                              <div
+                                                key={visit.id}
+                                                className="border rounded-xl p-2 bg-white"
+                                              >
+                                                <p className="font-semibold mb-1">
+                                                  Visita {visit.id}
+                                                </p>
+                                                <input
+                                                  type="text"
+                                                  placeholder="dd/mm/aaaa"
+                                                  className={`w-full border rounded px-2 py-1 mb-1 ${
+                                                    visit.fecha &&
+                                                    !isValidFecha(visit.fecha)
+                                                      ? "border-red-500 bg-red-50"
+                                                      : ""
+                                                  }`}
+                                                  value={visit.fecha}
+                                                  onChange={(e) =>
+                                                    updateVisitField(
+                                                      store.id,
+                                                      visit.id,
+                                                      "fecha",
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                />
+                                                <select
+                                                  className="w-full border rounded px-2 py-1 mb-1"
+                                                  value={
+                                                    visit.responsable || ""
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateVisitField(
+                                                      store.id,
+                                                      visit.id,
+                                                      "responsable",
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                >
+                                                  <option value="">
+                                                    Resp. audio
+                                                  </option>
+                                                  <option value="Sonia">
+                                                    Sonia
+                                                  </option>
+                                                  <option value="Ary Rojas">
+                                                    Ary Rojas
+                                                  </option>
+                                                </select>
 
-                        return (
-                          <tr
-                            key={store.id}
-                            className="border-b hover:bg-gray-50"
+                                                <label className="inline-flex items-center px-3 py-1 rounded-xl border cursor-pointer hover:bg-gray-50 mb-1">
+                                                  <span className="text-[11px] font-semibold">
+                                                    Adjuntar Excel checklist
+                                                  </span>
+                                                  <input
+                                                    type="file"
+                                                    accept=".xlsx,.xls"
+                                                    className="hidden"
+                                                    onChange={(e) =>
+                                                      handleChecklistFileChange(
+                                                        store.id,
+                                                        visit.id,
+                                                        e
+                                                      )
+                                                    }
+                                                  />
+                                                </label>
+                                                <p className="text-[10px] text-gray-500 mb-1 truncate">
+                                                  {visit.excelName ||
+                                                    "Sin archivo"}
+                                                </p>
+
+                                                <div className="grid grid-cols-3 gap-1 mt-1">
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Checklist % (F90)
+                                                    </p>
+                                                    <input
+                                                      type="number"
+                                                      min={0}
+                                                      max={100}
+                                                      className="w-full border rounded px-1 py-0.5"
+                                                      value={
+                                                        visit.checklist ?? ""
+                                                      }
+                                                      onChange={(e) => {
+                                                        const val =
+                                                          e.target.value;
+                                                        const num =
+                                                          val === ""
+                                                            ? null
+                                                            : Number(val);
+                                                        updateVisitField(
+                                                          store.id,
+                                                          visit.id,
+                                                          "checklist",
+                                                          isNaN(num)
+                                                            ? null
+                                                            : num
+                                                        );
+                                                      }}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      HIT
+                                                    </p>
+                                                    <select
+                                                      className="w-full border rounded px-1 py-0.5"
+                                                      value={visit.hit || ""}
+                                                      onChange={(e) =>
+                                                        updateVisitField(
+                                                          store.id,
+                                                          visit.id,
+                                                          "hit",
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                    >
+                                                      <option value="">
+                                                        -
+                                                      </option>
+                                                      <option value="Sí">
+                                                        Sí
+                                                      </option>
+                                                      <option value="No">
+                                                        No
+                                                      </option>
+                                                    </select>
+                                                  </div>
+                                                  <div>
+                                                    <p className="text-[10px] mb-0.5">
+                                                      Centro AAR
+                                                    </p>
+                                                    <select
+                                                      className="w-full border rounded px-1 py-0.5"
+                                                      value={
+                                                        visit.centroAAR || ""
+                                                      }
+                                                      onChange={(e) =>
+                                                        updateVisitField(
+                                                          store.id,
+                                                          visit.id,
+                                                          "centroAAR",
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                    >
+                                                      <option value="">
+                                                        -
+                                                      </option>
+                                                      <option value="Sí">
+                                                        Sí
+                                                      </option>
+                                                      <option value="No">
+                                                        No
+                                                      </option>
+                                                      <option value="En formación">
+                                                        En formación
+                                                      </option>
+                                                    </select>
+                                                  </div>
+                                                </div>
+
+                                                <p className="text-[9px] text-gray-500 mt-2">
+                                                  La plataforma lee la celda{" "}
+                                                  <strong>F90</strong> de la
+                                                  hoja “PROCESOS BÁSICOS /
+                                                  PROCESOS BASICOS” y la
+                                                  columna F como 0/1 (aplicación
+                                                  de cada criterio).
+                                                </p>
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <button
+                                            className="mt-1 text-[11px] px-3 py-1 rounded-full bg-red-600 text-white font-semibold"
+                                            onClick={() =>
+                                              setExpandedStoreId(null)
+                                            }
+                                          >
+                                            Guardar visitas de este centro
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+
+                        {/* KPIs globales */}
+                        <div className="mt-4 text-[11px] text-gray-600 flex flex-wrap gap-3">
+                          <span>
+                            Total tiendas: <strong>{totalTiendas}</strong>
+                          </span>
+                          <span>
+                            Tiendas con al menos 1 visita (Excel):{" "}
+                            <strong>
+                              {tiendasConVisita} (
+                              {porcentajeTiendasVisitadas.toFixed(0)}%)
+                            </strong>
+                          </span>
+                          <span>
+                            Total visitas (Excels adjuntos):{" "}
+                            <strong>{totalVisitas}</strong>
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
+                              checklistMediaGlobal
+                            )}`}
                           >
-                            <td className="px-2 py-1">{idx + 1}</td>
-                            <td className="px-2 py-1">
-                              <span className="font-semibold">
-                                {store.codigo}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1">
-                              <span
-                                className="inline-block px-2 py-0.5 rounded-full"
-                                style={delegadoColor(
-                                  store.centroRegional
-                                )}
-                              >
-                                {store.centro}
-                              </span>
-                              {isExclusiveStore(store) && (
-                                <span className="ml-1 inline-block px-2 py-0.5 rounded-full bg-amber-300 text-amber-900 text-[9px] font-semibold">
-                                  EXCLUSIVO
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-2 py-1">
-                              <span
-                                className="inline-block px-2 py-0.5 rounded-full"
-                                style={delegadoColor(
-                                  store.centroRegional
-                                )}
-                              >
-                                {store.provincia}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1">
-                              <span
-                                className="inline-block px-2 py-0.5 rounded-full"
-                                style={delegadoColor(
-                                  store.centroRegional
-                                )}
-                              >
-                                {store.centroRegional ||
-                                  "Sin delegado"}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1">
-                              <span
-                                className="inline-block px-2 py-0.5 rounded-full"
-                                style={delegadoColor(
-                                  store.centroRegional
-                                )}
-                              >
-                                {respAudioCentro || "-"}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1">
-                              {aarState ? (
-                                <span
-                                  className={
-                                    "inline-block px-2 py-0.5 rounded-full " +
-                                    aarBadgeClass(aarState)
-                                  }
-                                >
-                                  {aarState}
-                                </span>
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                            <td className="px-2 py-1 text-right">
-                              {visitasCentro.length}
-                            </td>
-                            <td className="px-2 py-1 text-right">
-                              {checklistBadge}
-                            </td>
+                            <span className="w-2 h-2 rounded-full bg-current/70" />
+                            <span>
+                              Checklist medio global (F90):{" "}
+                              {checklistMediaGlobal !== null
+                                ? `${checklistMediaGlobal.toFixed(0)}%`
+                                : "-"}
+                            </span>
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${kpiBadgeClass(
+                              hitMediaGlobal
+                            )}`}
+                          >
+                            <span className="w-2 h-2 rounded-full bg-current/70" />
+                            <span>
+                              % aplicación HIT global:{" "}
+                              {hitMediaGlobal !== null
+                                ? `${hitMediaGlobal.toFixed(0)}%`
+                                : "-"}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* CENTROS EXCLUSIVOS */}
+                <section className="mt-10 bg-white p-6 rounded-2xl shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-lg">
+                      Centros exclusivos – acciones y ventas
+                    </h3>
+                    <p className="text-[10px] text-gray-500">
+                      Los centros se marcan como EXCLUSIVO según el listado
+                      fijo: Fuenlabrada Paseo de la Estación, Reina Mercedes,
+                      Delicias Zaragoza, Peñacastillo, Torrelavega, Los Valles,
+                      Santiago de Compostela, Pamplona Centro Exclusivo.
+                    </p>
+                  </div>
+
+                  {exclusiveStores.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      Ningún centro del listado coincide con los centros
+                      exclusivos configurados.
+                    </p>
+                  ) : (
+                    <>
+                      {/* Resumen exclusivo */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-[11px]">
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
+                          <p className="font-semibold mb-1">
+                            Nº centros exclusivos
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {exclusiveStores.length}
+                          </p>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
+                          <p className="font-semibold mb-1">
+                            Ventas mensuales acumuladas €
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {totalVentasEx.toLocaleString("es-ES", {
+                              minimumFractionDigits: 0,
+                            })}
+                          </p>
+                        </div>
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2">
+                          <p className="font-semibold mb-1">
+                            % cumplimiento objetivo global
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {pctGlobalEx !== null
+                              ? `${pctGlobalEx.toFixed(0)}%`
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto text-[11px]">
+                        <table className="min-w-full border-collapse">
+                          <thead>
+                            <tr className="bg-amber-50 border-b">
+                              <th className="text-left px-2 py-2">Centro</th>
+                              <th className="text-left px-2 py-2">
+                                Provincia
+                              </th>
+                              <th className="text-left px-2 py-2">
+                                Delegado
+                              </th>
+                              <th className="text-left px-2 py-2">
+                                Resp. audio
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Ventas mensuales €
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                Objetivo mensual €
+                              </th>
+                              <th className="text-right px-2 py-2">
+                                % resultado
+                              </th>
+                              <th className="text-center px-2 py-2">
+                                Acciones / derivaciones (+)
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {exclusiveSummaries.map((row) => {
+                              const { store, ventas, objetivo, pct } = row;
+                              const resp = deriveRespAudio(store);
+                              const isExpanded =
+                                expandedStoreId ===
+                                `ex-${store.id}`;
+                              return (
+                                <React.Fragment key={store.id}>
+                                  <tr className="border-b bg-amber-50/40 hover:bg-amber-100/60 align-top">
+                                    <td className="px-2 py-1">
+                                      <span className="font-semibold">
+                                        {store.centro || store.codigo}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      {store.provincia || "-"}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      {store.centroRegional || "-"}
+                                    </td>
+                                    <td className="px-2 py-1">
+                                      {resp || "-"}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {ventas.toLocaleString("es-ES", {
+                                        minimumFractionDigits: 0,
+                                      })}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {objetivo.toLocaleString("es-ES", {
+                                        minimumFractionDigits: 0,
+                                      })}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {pct !== null
+                                        ? `${pct.toFixed(0)}%`
+                                        : "-"}
+                                    </td>
+                                    <td className="px-2 py-1 text-center">
+                                      <button
+                                        className="text-[10px] px-2 py-1 rounded-full border border-amber-500 text-amber-700 hover:bg-amber-100"
+                                        onClick={() =>
+                                          setExpandedStoreId(
+                                            isExpanded
+                                              ? null
+                                              : `ex-${store.id}`
+                                          )
+                                        }
+                                      >
+                                        {isExpanded
+                                          ? "Ocultar acciones"
+                                          : "Ver / añadir (+)"}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                  {isExpanded && (
+                                    <tr className="bg-amber-50 border-b">
+                                      <td
+                                        colSpan={8}
+                                        className="px-3 py-3"
+                                      >
+                                        <div className="text-[11px]">
+                                          <p className="font-semibold mb-2">
+                                            Acciones comerciales / derivaciones
+                                            – {store.centro || store.codigo}
+                                          </p>
+                                          <div className="overflow-x-auto mb-2">
+                                            <table className="min-w-full border-collapse">
+                                              <thead>
+                                                <tr className="bg-white border-b">
+                                                  <th className="text-left px-2 py-1">
+                                                    Acción
+                                                  </th>
+                                                  <th className="text-left px-2 py-1">
+                                                    Fecha acción
+                                                  </th>
+                                                  <th className="text-right px-2 py-1">
+                                                    Derivaciones
+                                                  </th>
+                                                  <th className="text-right px-2 py-1">
+                                                    Ventas mensuales €
+                                                  </th>
+                                                  <th className="text-right px-2 py-1">
+                                                    Objetivo mensual €
+                                                  </th>
+                                                  <th className="text-right px-2 py-1">
+                                                    % resultado
+                                                  </th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {(store.exclusiveActions ||
+                                                  []
+                                                ).map((act) => {
+                                                  const ventasNum =
+                                                    Number(
+                                                      act.ventas
+                                                    ) || 0;
+                                                  const objNum =
+                                                    Number(
+                                                      act.objetivo
+                                                    ) || 0;
+                                                  const pctAct =
+                                                    objNum > 0
+                                                      ? (ventasNum /
+                                                          objNum) *
+                                                        100
+                                                      : null;
+                                                  return (
+                                                    <tr
+                                                      key={act.id}
+                                                      className="border-b bg-white"
+                                                    >
+                                                      <td className="px-2 py-1">
+                                                        <select
+                                                          className="w-full border rounded px-1 py-0.5"
+                                                          value={
+                                                            act.tipo || ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            updateExclusiveActionField(
+                                                              store.id,
+                                                              act.id,
+                                                              "tipo",
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                        >
+                                                          <option value="">
+                                                            Selecciona
+                                                          </option>
+                                                          {ACCION_TIPOS.map(
+                                                            (t) => (
+                                                              <option
+                                                                key={t}
+                                                                value={t}
+                                                              >
+                                                                {t}
+                                                              </option>
+                                                            )
+                                                          )}
+                                                        </select>
+                                                      </td>
+                                                      <td className="px-2 py-1">
+                                                        <input
+                                                          type="date"
+                                                          className="w-full border rounded px-1 py-0.5"
+                                                          value={
+                                                            act.fecha || ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            updateExclusiveActionField(
+                                                              store.id,
+                                                              act.id,
+                                                              "fecha",
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                        />
+                                                      </td>
+                                                      <td className="px-2 py-1 text-right">
+                                                        <input
+                                                          type="number"
+                                                          min={0}
+                                                          className="w-full border rounded px-1 py-0.5 text-right"
+                                                          value={
+                                                            act.derivaciones ||
+                                                            ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            updateExclusiveActionField(
+                                                              store.id,
+                                                              act.id,
+                                                              "derivaciones",
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                        />
+                                                      </td>
+                                                      <td className="px-2 py-1 text-right">
+                                                        <input
+                                                          type="number"
+                                                          min={0}
+                                                          className="w-full border rounded px-1 py-0.5 text-right"
+                                                          value={
+                                                            act.ventas || ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            updateExclusiveActionField(
+                                                              store.id,
+                                                              act.id,
+                                                              "ventas",
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                        />
+                                                      </td>
+                                                      <td className="px-2 py-1 text-right">
+                                                        <input
+                                                          type="number"
+                                                          min={0}
+                                                          className="w-full border rounded px-1 py-0.5 text-right"
+                                                          value={
+                                                            act.objetivo || ""
+                                                          }
+                                                          onChange={(e) =>
+                                                            updateExclusiveActionField(
+                                                              store.id,
+                                                              act.id,
+                                                              "objetivo",
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                        />
+                                                      </td>
+                                                      <td className="px-2 py-1 text-right">
+                                                        {pctAct !== null
+                                                          ? `${pctAct.toFixed(
+                                                              0
+                                                            )}%`
+                                                          : "-"}
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                          <button
+                                            className="text-[11px] px-3 py-1 rounded-full bg-amber-600 text-white font-semibold"
+                                            onClick={() =>
+                                              addExclusiveAction(store.id)
+                                            }
+                                          >
+                                            Añadir acción (+)
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </section>
+
+                {/* AUDIOLOGÍA AVANZADA REMOTO (AAR) */}
+                <section className="mt-10 bg-white p-6 rounded-2xl shadow mb-10">
+                  <h3 className="font-bold text-lg mb-2">
+                    Audiología avanzada remoto (AAR)
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Se muestran los centros con estado AAR ={" "}
+                    <strong>Sí</strong> o <strong>En formación</strong>. El
+                    estado AAR se define por las visitas (campo Centro AAR: Sí /
+                    No / En formación). Colores: verde = Sí, ámbar = En
+                    formación, rojo = No.
+                  </p>
+
+                  {aarCenters.length === 0 ? (
+                    <p className="text-xs text-gray-500">
+                      No hay centros con AAR activo o en formación.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto text-[11px]">
+                      <table className="min-w-full border-collapse">
+                        <thead>
+                          <tr className="bg-blue-50 border-b">
+                            <th className="text-left px-2 py-2">Código</th>
+                            <th className="text-left px-2 py-2">Centro</th>
+                            <th className="text-left px-2 py-2">
+                              Provincia
+                            </th>
+                            <th className="text-left px-2 py-2">Delegado</th>
+                            <th className="text-left px-2 py-2">
+                              Resp. audio
+                            </th>
+                            <th className="text-left px-2 py-2">
+                              Estado AAR
+                            </th>
+                            <th className="text-right px-2 py-2">
+                              Nº visitas con Excel
+                            </th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                        </thead>
+                        <tbody>
+                          {aarCenters.map((store) => {
+                            const estado = deriveCentroAAR(store);
+                            const resp = deriveRespAudio(store);
+                            const numVis = store.visitas.filter(
+                              (v) => v.excelName && v.excelName !== ""
+                            ).length;
+                            return (
+                              <tr
+                                key={store.id}
+                                className="border-b hover:bg-blue-50/60"
+                              >
+                                <td className="px-2 py-1">
+                                  {store.codigo || "-"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {store.centro || "-"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {store.provincia || "-"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {store.centroRegional || "-"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {resp || "-"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  <span
+                                    className={
+                                      "inline-block px-2 py-0.5 rounded-full " +
+                                      aarBadgeClass(estado)
+                                    }
+                                  >
+                                    {estado || "-"}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1 text-right">
+                                  {numVis}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </div>
+            )}
           </div>
         );
       }
