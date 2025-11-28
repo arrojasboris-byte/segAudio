@@ -440,14 +440,6 @@
           setDashboardStoreId(null);
         }
 
-        function updateStoreField(id, field, value) {
-          setStores((prev) =>
-            prev.map((store) =>
-              store.id === id ? { ...store, [field]: value } : store
-            )
-          );
-        }
-
         function updateVisitField(storeId, visitId, field, value) {
           setStores((prev) =>
             prev.map((store) => {
@@ -482,7 +474,7 @@
               if (isExcel && window.XLSX) {
                 const wb = XLSX.read(data, { type: "array" });
 
-                // Buscar hoja "PROCESOS BASICOS" (o similar); si no, la primera
+                // Buscar hoja "PROCESOS BASICOS"; si no está, usamos la primera
                 const targetSheetName =
                   wb.SheetNames.find((name) =>
                     name.toUpperCase().includes("PROCESOS BASICOS")
@@ -525,7 +517,7 @@
                 const points = [];
                 for (
                   let row = 1;
-                  row <= 89 && points.length < TOTAL_CHECKLIST_ITEMS;
+                  points.length < TOTAL_CHECKLIST_ITEMS && row <= 500;
                   row++
                 ) {
                   const addr = `F${row}`;
@@ -1632,11 +1624,13 @@
                                             la plataforma lee automáticamente
                                             el % global desde la celda{" "}
                                             <strong>F90</strong> y cada
-                                            criterio (columna F) como 0 = no
-                                            aplica, 1 = sí aplica. Con esto se
-                                            calcula el mapa horizontal por
+                                            criterio (columna F de la hoja
+                                            <strong> PROCESOS BASICOS</strong>)
+                                            como 0 = NO aplica y 1 = SÍ aplica.
+                                            Con esto se calcula el mapa por
                                             punto y los promedios por centro y
-                                            global.
+                                            global. Menos del 85% en rojo; 85%
+                                            o más en verde.
                                           </p>
                                           <button
                                             className="mt-3 text-[11px] px-3 py-1 rounded-full bg-red-600 text-white font-semibold"
