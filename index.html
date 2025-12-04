@@ -1,1782 +1,810 @@
-# Create project directory structure
-base_dir = "/mnt/data/ControlCenterAudio"
-os.makedirs(base_dir, exist_ok=True)
-os.makedirs(os.path.join(base_dir, "css"), exist_ok=True)
-os.makedirs(os.path.join(base_dir, "js"), exist_ok=True)
-os.makedirs(os.path.join(base_dir, "assets"), exist_ok=True)
-
-index_html = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Control Center Audio</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="css/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Center Audio - Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#1e293b',
+                            primary: '#3b82f6',
+                            accent: '#ef4444',
+                            success: '#10b981',
+                            warning: '#f59e0b',
+                            bg: '#f3f4f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos 3D y Personalizados */
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f3f4f6; overflow: hidden; }
+        
+        .btn-3d {
+            transition: all 0.1s;
+            border-bottom: 4px solid rgba(0,0,0,0.2);
+        }
+        .btn-3d:active {
+            transform: translateY(2px);
+            border-bottom: 0px solid rgba(0,0,0,0.2);
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .scroll-hidden::-webkit-scrollbar { width: 6px; }
+        .scroll-hidden::-webkit-scrollbar-track { background: #f1f1f1; }
+        .scroll-hidden::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* Animaciones */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        /* Colores Delegados para Mapa */
+        .marker-color-1 { filter: hue-rotate(0deg); }   /* Rojo */
+        .marker-color-2 { filter: hue-rotate(120deg); } /* Verde */
+        .marker-color-3 { filter: hue-rotate(240deg); } /* Azul */
+        .marker-color-4 { filter: hue-rotate(60deg); }  /* Amarillo */
+    </style>
 </head>
-<body class="cca-body">
-  <div class="cca-app d-flex">
-    <!-- Sidebar -->
-    <aside class="cca-sidebar d-flex flex-column">
-      <div class="text-center py-3 border-bottom border-light-subtle">
-        <div class="fw-bold fs-5 text-light">Control Center</div>
-        <div class="fw-semibold text-warning">AUDIO</div>
-      </div>
-      <nav class="nav flex-column mt-3 cca-sidebar-nav">
-        <button class="nav-link active" data-section="dashboard">
-          <i class="bi bi-speedometer2 me-2"></i>Dashboard
-        </button>
-        <button class="nav-link" data-section="centros">
-          <i class="bi bi-building me-2"></i>Centros
-        </button>
-        <button class="nav-link" data-section="visitas">
-          <i class="bi bi-calendar-event me-2"></i>Visitas
-        </button>
-        <button class="nav-link" data-section="exclusivos">
-          <i class="bi bi-gem me-2"></i>Centros exclusivos
-        </button>
-        <button class="nav-link" data-section="proyectos">
-          <i class="bi bi-kanban me-2"></i>Proyectos
-        </button>
-        <button class="nav-link" data-section="servicio-aar">
-          <i class="bi bi-headset me-2"></i>Servicio AAR
-        </button>
-      </nav>
-      <div class="mt-auto p-3 text-center small text-light-50">
-        v1.0 · HTML
-      </div>
+<body class="h-screen flex text-gray-800">
+
+    <aside class="w-64 bg-brand-dark text-white flex flex-col shadow-2xl z-20">
+        <div class="p-6 flex items-center gap-3 border-b border-gray-700">
+            <i class="fa-solid fa-wave-square text-brand-primary text-2xl"></i>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">Control Center</h1>
+                <p class="text-xs text-gray-400">Audio Management</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="showSection('dashboard')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3 bg-gray-700">
+                <i class="fa-solid fa-chart-pie w-6 text-center"></i> Dashboard Global
+            </button>
+            <div class="pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestión</div>
+            <button onclick="showSection('centros')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
+                <i class="fa-solid fa-map-location-dot w-6 text-center"></i> Centros
+            </button>
+            <button onclick="showSection('visitas')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
+                <i class="fa-solid fa-calendar-check w-6 text-center"></i> Visitas Audio
+            </button>
+            <button onclick="showSection('exclusivos')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
+                <i class="fa-solid fa-gem w-6 text-center"></i> Centros Exclusivos
+            </button>
+            
+            <div class="pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Desarrollo</div>
+            <button onclick="showSection('proyectos')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
+                <i class="fa-solid fa-diagram-project w-6 text-center"></i> Proyectos
+            </button>
+            <button onclick="showSection('servicio-aar')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
+                <i class="fa-solid fa-user-graduate w-6 text-center"></i> Servicio AAR
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-gray-700">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500"></div>
+                <div>
+                    <p class="text-sm font-bold">Admin User</p>
+                    <p class="text-xs text-green-400">Online</p>
+                </div>
+            </div>
+        </div>
     </aside>
 
-    <!-- Main content -->
-    <main class="cca-main flex-grow-1">
-      <!-- Top bar -->
-      <header class="cca-topbar d-flex align-items-center gap-3">
-        <div class="flex-grow-1 position-relative">
-          <i class="bi bi-search cca-search-icon"></i>
-          <input id="globalSearch" class="form-control cca-search-input" placeholder="Buscar en todo Control Center Audio..." />
-        </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-cca-3d" id="btnSaveLocal" title="Guardar local">
-            <i class="bi bi-device-hdd"></i>
-          </button>
-          <button class="btn btn-cca-3d" id="btnSaveCloud" title="Guardar en nube (descargar backup)">
-            <i class="bi bi-cloud-arrow-down"></i>
-          </button>
-          <button class="btn btn-cca-3d" id="btnLoadCloud" title="Actualizar desde nube (cargar backup)">
-            <i class="bi bi-cloud-arrow-up"></i>
-          </button>
-          <button class="btn btn-cca-3d" id="btnDownloadHtml" title="Descargar HTML actual">
-            <i class="bi bi-filetype-html"></i>
-          </button>
-          <input type="file" id="cloudFileInput" accept="application/json" class="d-none" />
-        </div>
-      </header>
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
+            <div class="relative w-96">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" placeholder="Buscar centro, delegado, KPI..." class="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary transition">
+            </div>
 
-      <!-- Sections wrapper -->
-      <section id="dashboard" class="cca-section active">
-        <div class="container-fluid py-3">
-          <h2 class="section-title mb-3"><i class="bi bi-speedometer2 me-2"></i>Visión general</h2>
-          <div class="row g-3 mb-3">
-            <div class="col-md-3">
-              <div class="cca-kpi-card">
-                <div class="kpi-label">% Procesos</div>
-                <div class="kpi-value" id="kpiProcesos">0%</div>
-                <div class="kpi-sub" id="kpiProcesosSub">Basado en checklist cargados</div>
-              </div>
+            <div class="flex gap-4">
+                <button class="btn-3d bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-600">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Nube
+                </button>
+                <button class="btn-3d bg-green-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-green-600">
+                    <i class="fa-solid fa-sync"></i> Actualizar
+                </button>
+                <button class="btn-3d bg-gray-800 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-gray-900" onclick="downloadHTML()">
+                    <i class="fa-solid fa-download"></i> Descargar HTML
+                </button>
             </div>
-            <div class="col-md-3">
-              <div class="cca-kpi-card">
-                <div class="kpi-label">Conv. a prueba</div>
-                <div class="kpi-value" id="kpiPrueba">0%</div>
-                <div class="kpi-sub">Media sobre todos los centros</div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="cca-kpi-card">
-                <div class="kpi-label">Conv. a venta</div>
-                <div class="kpi-value" id="kpiVenta">0%</div>
-                <div class="kpi-sub">Media sobre todos los centros</div>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="cca-kpi-card">
-                <div class="kpi-label">Centros con HIT</div>
-                <div class="kpi-value" id="kpiHit">0</div>
-                <div class="kpi-sub">Aplica HIT</div>
-              </div>
-            </div>
-          </div>
+        </header>
 
-          <div class="row g-3">
-            <div class="col-lg-6">
-              <div class="cca-panel h-100">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Ranking de centros por conversión a venta</h5>
-                  <span class="badge bg-warning-subtle text-dark small">Corner & Exclusivos</span>
-                </div>
-                <div class="table-responsive small" style="max-height:280px;">
-                  <table class="table table-sm table-hover align-middle" id="tablaRankingCentros">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Centro</th>
-                        <th>Delegado</th>
-                        <th>Tipo</th>
-                        <th class="text-end">Conv. venta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- Filled by JS -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            <div class="col-lg-6">
-              <div class="cca-panel h-100">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">KPIs globales</h5>
-                  <span class="text-muted small">Actualizado con cada checklist</span>
-                </div>
-                <canvas id="kpiChart" height="140"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <div class="row g-3 mt-1">
-            <div class="col-lg-7">
-              <div class="cca-panel h-100">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Mapa de centros</h5>
-                  <span class="text-muted small">España · por delegado</span>
-                </div>
-                <div id="mapCentros" class="cca-map"></div>
-              </div>
-            </div>
-            <div class="col-lg-5">
-              <div class="cca-panel h-100">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Estado de visitas</h5>
-                  <span class="text-muted small">Pendientes / realizadas / anuladas</span>
-                </div>
-                <canvas id="visitasChart" height="160"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- CENTROS -->
-      <section id="centros" class="cca-section">
-        <div class="container-fluid py-3">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title mb-0"><i class="bi bi-building me-2"></i>Centros</h2>
-            <button class="btn btn-sm btn-primary rounded-pill px-3" id="btnNuevoCentro">
-              <i class="bi bi-plus-lg me-1"></i>Nuevo centro
-            </button>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="cca-panel mb-3">
-                <h5 class="mb-3">Ficha de centro</h5>
-                <form id="formCentro" class="small">
-                  <div class="row g-2">
-                    <div class="col-md-8">
-                      <label class="form-label">Nombre centro</label>
-                      <input type="text" class="form-control" id="centroNombre" required />
+        <div id="content-area" class="flex-1 overflow-y-auto p-6 bg-gray-50 relative scroll-hidden">
+            
+            <div id="sec-dashboard" class="section-view fade-in">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Visión General</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-blue-500">
+                        <div class="text-gray-500 text-sm font-semibold uppercase">Total Centros Audio</div>
+                        <div class="text-3xl font-bold text-gray-800 mt-2">142</div>
+                        <div class="text-xs text-green-500 mt-1"><i class="fa-solid fa-arrow-up"></i> +5 este mes</div>
                     </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Código</label>
-                      <input type="text" class="form-control" id="centroCodigo" />
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-purple-500">
+                        <div class="text-gray-500 text-sm font-semibold uppercase">Visitas Realizadas</div>
+                        <div class="text-3xl font-bold text-gray-800 mt-2">87%</div>
+                        <div class="text-xs text-gray-400 mt-1">Objetivo mensual</div>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Delegado</label>
-                      <input type="text" class="form-control" id="centroDelegado" />
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-green-500">
+                        <div class="text-gray-500 text-sm font-semibold uppercase">Conversión Venta</div>
+                        <div class="text-3xl font-bold text-gray-800 mt-2">42.5%</div>
+                        <div class="text-xs text-green-500 mt-1">↑ 2.1% vs estimación</div>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Tipo</label>
-                      <select class="form-select" id="centroTipo">
-                        <option value="CORNER">Corner</option>
-                        <option value="EXCLUSIVO">Exclusivo</option>
-                      </select>
+                    <div class="glass-panel p-4 rounded-xl border-l-4 border-red-500">
+                        <div class="text-gray-500 text-sm font-semibold uppercase">Alertas Stock</div>
+                        <div class="text-3xl font-bold text-gray-800 mt-2">12</div>
+                        <div class="text-xs text-red-500 mt-1">Requieren atención</div>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Provincia</label>
-                      <input type="text" class="form-control" id="centroProvincia" />
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Lat</label>
-                      <input type="number" step="0.0001" class="form-control" id="centroLat" />
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label">Lng</label>
-                      <input type="number" step="0.0001" class="form-control" id="centroLng" />
-                    </div>
-                    <div class="col-12">
-                      <label class="form-label">Checklist Excel</label>
-                      <input type="file" id="centroChecklist" class="form-control" accept=".xlsx,.xls" />
-                      <div class="form-text">
-                        El sistema detecta si es Corner o Exclusivo y extrae KPIs automáticamente.
-                      </div>
-                    </div>
-                  </div>
-                  <div class="mt-3 d-flex justify-content-end gap-2">
-                    <button type="reset" class="btn btn-sm btn-outline-secondary">Limpiar</button>
-                    <button type="submit" class="btn btn-sm btn-success">
-                      <i class="bi bi-check-circle me-1"></i>Guardar centro
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              <div class="cca-panel small">
-                <h6 class="mb-2">Resumen KPIs del centro seleccionado</h6>
-                <div class="row text-center">
-                  <div class="col-3">
-                    <div class="mini-kpi-label">% Proc.</div>
-                    <div class="mini-kpi-value" id="centroKpiProcesos">-</div>
-                  </div>
-                  <div class="col-3">
-                    <div class="mini-kpi-label">HIT</div>
-                    <div class="mini-kpi-value" id="centroKpiHit">-</div>
-                  </div>
-                  <div class="col-3">
-                    <div class="mini-kpi-label">Conv. Prueba</div>
-                    <div class="mini-kpi-value" id="centroKpiPrueba">-</div>
-                  </div>
-                  <div class="col-3">
-                    <div class="mini-kpi-label">Conv. Venta</div>
-                    <div class="mini-kpi-value" id="centroKpiVenta">-</div>
-                  </div>
                 </div>
-              </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-80">
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h3 class="font-bold mb-4">Rendimiento por Delegado (Ventas)</h3>
+                        <canvas id="chartDash1"></canvas>
+                    </div>
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h3 class="font-bold mb-4">Evolución Semanal de Pruebas</h3>
+                        <canvas id="chartDash2"></canvas>
+                    </div>
+                </div>
             </div>
 
-            <div class="col-lg-7">
-              <div class="cca-panel mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Mapa de centros</h5>
-                  <span class="small text-muted">Colores por delegado</span>
+            <div id="sec-centros" class="section-view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Mapa de Centros y Rankings</h2>
+                    <div class="flex gap-2">
+                        <span class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-xs font-bold border border-red-200">Eneritz (Norte)</span>
+                        <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold border border-blue-200">Daniel (Galicia)</span>
+                        <span class="px-3 py-1 rounded-full bg-green-100 text-green-600 text-xs font-bold border border-green-200">Laura (Cataluña)</span>
+                        <span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold border border-yellow-200">Manuel (Sur)</span>
+                    </div>
                 </div>
-                <div id="mapCentrosSection" class="cca-map"></div>
-              </div>
 
-              <div class="cca-panel small">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Listado de centros</h6>
-                  <input type="text" id="filtroCentros" class="form-control form-control-sm w-auto" placeholder="Filtrar..." />
+                <div class="grid grid-cols-12 gap-6 h-[600px]">
+                    <div class="col-span-4 glass-panel rounded-xl p-4 overflow-y-auto">
+                        <h3 class="font-bold text-lg mb-4 border-b pb-2">Top Centros - KPIs</h3>
+                        
+                        <div class="space-y-4">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                                    <tr>
+                                        <th class="px-2 py-2">Centro</th>
+                                        <th class="px-2 py-2">Del.</th>
+                                        <th class="px-2 py-2 text-right">Conv %</th>
+                                        <th class="px-2 py-2 text-center">HIT</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="col-span-8 glass-panel rounded-xl relative overflow-hidden">
+                        <div id="map" class="w-full h-full z-0"></div>
+                    </div>
                 </div>
-                <div class="table-responsive" style="max-height:260px;">
-                  <table class="table table-sm table-hover align-middle" id="tablaCentros">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Centro</th>
-                        <th>Delegado</th>
-                        <th>Tipo</th>
-                        <th>Provincia</th>
-                        <th class="text-end">Conv. venta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- JS -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- VISITAS -->
-      <section id="visitas" class="cca-section">
-        <div class="container-fluid py-3">
-          <h2 class="section-title mb-3"><i class="bi bi-calendar-event me-2"></i>Visitas</h2>
-
-          <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="cca-panel mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Calendario</h5>
-                  <div class="d-flex align-items-center gap-2 small">
-                    <button class="btn btn-sm btn-outline-light" id="btnPrevMes"><i class="bi bi-chevron-left"></i></button>
-                    <span id="labelMes"></span>
-                    <button class="btn btn-sm btn-outline-light" id="btnNextMes"><i class="bi bi-chevron-right"></i></button>
-                  </div>
-                </div>
-                <div id="visitasCalendar"></div>
-                <div class="mt-2 small">
-                  <span class="me-3"><span class="estado-dot estado-pendiente"></span> Pendiente</span>
-                  <span class="me-3"><span class="estado-dot estado-realizada"></span> Realizada</span>
-                  <span><span class="estado-dot estado-anulada"></span> Anulada</span>
-                </div>
-              </div>
-
-              <div class="cca-panel small">
-                <h6 class="mb-2">Programar nueva visita</h6>
-                <form id="formNuevaVisita">
-                  <div class="mb-2">
-                    <label class="form-label">Fecha seleccionada</label>
-                    <input type="text" class="form-control form-control-sm" id="visitaFecha" readonly />
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Centro</label>
-                    <select class="form-select form-select-sm" id="visitaCentro"></select>
-                    <div class="form-text">Centros cargados en la sección "Centros".</div>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Resp-Audio</label>
-                    <select class="form-select form-select-sm" id="visitaRespAudio">
-                      <option value="Ariannys Rojas">Ariannys Rojas</option>
-                      <option value="Sonia Guasque">Sonia Guasque</option>
-                    </select>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Estado inicial</label>
-                    <select class="form-select form-select-sm" id="visitaEstado">
-                      <option value="pendiente">Pendiente (ámbar)</option>
-                      <option value="realizada">Realizada (verde)</option>
-                      <option value="anulada">Anulada (rojo)</option>
-                    </select>
-                  </div>
-                  <div class="d-flex justify-content-end gap-2">
-                    <button type="reset" class="btn btn-sm btn-outline-secondary">Limpiar</button>
-                    <button type="submit" class="btn btn-sm btn-primary">
-                      <i class="bi bi-plus-lg me-1"></i>Agendar visita
-                    </button>
-                  </div>
-                </form>
-              </div>
             </div>
 
-            <div class="col-lg-7">
-              <div class="cca-panel mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Visitas del día seleccionado</h5>
-                  <span class="small text-muted" id="labelVisitasDia"></span>
-                </div>
-                <div class="table-responsive small" style="max-height:220px;">
-                  <table class="table table-sm table-hover align-middle" id="tablaVisitas">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Centro</th>
-                        <th>Resp-Audio</th>
-                        <th>Estado</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- JS -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div id="sec-visitas" class="section-view hidden fade-in pb-20">
+                <div class="flex gap-6 mb-6">
+                    <div class="w-1/3 glass-panel p-6 rounded-xl">
+                        <h3 class="font-bold text-lg mb-4"><i class="fa-regular fa-calendar"></i> Agenda de Visitas</h3>
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-center text-sm mb-4">
+                            </div>
+                        <div class="mt-4 border-t pt-4">
+                            <h4 class="font-bold text-sm mb-2">Resumen Visitas</h4>
+                            <div class="flex justify-between text-xs mb-1"><span>Pendientes</span> <span class="font-bold text-yellow-500">5</span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2"><div class="bg-yellow-500 h-2 rounded-full" style="width: 20%"></div></div>
+                            
+                            <div class="flex justify-between text-xs mb-1"><span>Realizadas</span> <span class="font-bold text-green-500">12</span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2"><div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div></div>
+                        </div>
+                    </div>
 
-              <div class="cca-panel">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h5 class="mb-0">Informe de visita</h5>
-                  <span class="small text-muted">Se activa al comenzar una visita</span>
+                    <div class="w-2/3 flex flex-col gap-4">
+                        <div id="report-header" class="glass-panel p-6 rounded-xl opacity-50 pointer-events-none transition-all">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-brand-primary" id="visit-center-name">Seleccione una Visita</h2>
+                                    <p class="text-sm text-gray-500">Fecha: <span id="visit-date">--/--/----</span> | Resp: <span id="visit-resp" class="font-semibold text-gray-700">--</span></p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <span id="status-badge" class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">Sin Iniciar</span>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Audiólogo</label>
+                                    <input type="text" class="w-full border rounded p-1 text-sm bg-white" placeholder="Nombre...">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Horas Servicio</label>
+                                    <input type="number" class="w-full border rounded p-1 text-sm bg-white" placeholder="0">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Tipo Centro</label>
+                                    <select id="center-type-select" class="w-full border rounded p-1 text-sm bg-white">
+                                        <option value="corner">Corner</option>
+                                        <option value="exclusivo">Exclusivo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-white transition text-center cursor-pointer relative">
+                                <input type="file" id="excel-upload" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileUpload(this)">
+                                <i class="fa-solid fa-file-excel text-green-600 text-2xl mb-2"></i>
+                                <p class="text-sm text-gray-600 font-medium">Adjuntar Checklist Excel (Arrastra o Click)</p>
+                                <p class="text-xs text-gray-400">Detecta auto: Corner vs Exclusivo</p>
+                            </div>
+                        </div>
+
+                        <div id="report-body" class="glass-panel p-6 rounded-xl hidden fade-in">
+                            <h3 class="font-bold border-b pb-2 mb-4 text-gray-700 flex justify-between">
+                                Resultados Auditoría
+                                <button class="text-xs text-red-500 underline" onclick="clearReport()">Limpiar Datos</button>
+                            </h3>
+                            
+                            <div class="grid grid-cols-3 gap-4 mb-6">
+                                <div class="bg-white p-3 rounded shadow-sm text-center">
+                                    <p class="text-xs text-gray-500">Aplica HIT</p>
+                                    <p id="kpi-hit" class="text-xl font-bold text-gray-800">-</p>
+                                </div>
+                                <div class="bg-white p-3 rounded shadow-sm text-center">
+                                    <p class="text-xs text-gray-500">% Procesos</p>
+                                    <p id="kpi-proc" class="text-xl font-bold text-blue-600">-</p>
+                                </div>
+                                <div class="bg-white p-3 rounded shadow-sm text-center">
+                                    <p class="text-xs text-gray-500">Conv. Venta</p>
+                                    <p id="kpi-conv" class="text-xl font-bold text-green-600">-</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="h-40">
+                                    <canvas id="chartRadarSkills"></canvas>
+                                </div>
+                                <div class="space-y-2 overflow-y-auto h-40 bg-red-50 p-2 rounded border border-red-100">
+                                    <p class="text-xs font-bold text-red-600 uppercase mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Áreas de Mejora (F=0)</p>
+                                    <ul id="areas-mejora-list" class="text-xs text-gray-700 space-y-1 list-disc pl-4">
+                                        <li class="italic text-gray-400">Esperando datos...</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 mt-4">
+                                <div class="h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-300">Img Exterior</div>
+                                <div class="h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-300">Img Interior</div>
+                                <div class="h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-300">Img Gabinete</div>
+                            </div>
+
+                            <div class="mt-4 space-y-2">
+                                <textarea class="w-full text-sm p-2 border rounded resize-none" rows="2" placeholder="Observaciones y Recomendaciones..."></textarea>
+                                <textarea class="w-full text-sm p-2 border rounded resize-none" rows="2" placeholder="Compromisos acordados..."></textarea>
+                            </div>
+
+                            <button class="btn-3d w-full mt-4 bg-brand-primary text-white py-2 rounded font-bold" onclick="alert('Informe Generado y Guardado!')">Generar Informe Completo</button>
+                        </div>
+                    </div>
                 </div>
-                <div id="informeContainer">
-                  <p class="small text-muted mb-0">Selecciona una visita y pulsa <strong>"Comenzar informe"</strong> para rellenar los datos.</p>
-                </div>
-              </div>
             </div>
-          </div>
+
+            <div id="sec-exclusivos" class="section-view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Centros Exclusivos - Monitorización</h2>
+                    <button class="btn-3d bg-brand-success text-white px-3 py-1 rounded text-sm"><i class="fa-solid fa-plus"></i> Añadir Centro</button>
+                </div>
+
+                <div class="glass-panel rounded-xl overflow-hidden mb-6">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-800 text-white text-xs uppercase">
+                            <tr>
+                                <th class="p-3">Centro</th>
+                                <th class="p-3 text-right">Agosto 25</th>
+                                <th class="p-3 text-right">Sept 25</th>
+                                <th class="p-3 text-right">Oct 25</th>
+                                <th class="p-3 text-right">Est. Acum.</th>
+                                <th class="p-3 text-right">Real Acum.</th>
+                                <th class="p-3 text-center">Estado</th>
+                                <th class="p-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-3 font-medium">AAA NARÓN</td>
+                                <td class="p-3 text-right">12.500 €</td>
+                                <td class="p-3 text-right">13.200 €</td>
+                                <td class="p-3 text-right">11.800 €</td>
+                                <td class="p-3 text-right font-bold text-gray-600">35.000 €</td>
+                                <td class="p-3 text-right font-bold text-green-600">37.500 €</td>
+                                <td class="p-3 text-center"><span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Objetivo</span></td>
+                                <td class="p-3">
+                                    <select class="text-xs border rounded p-1 bg-white">
+                                        <option>Seleccionar...</option>
+                                        <option>Mailing</option>
+                                        <option>Azafata</option>
+                                        <option>Call Center</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-3 font-medium">ZARAGOZA AUGUSTA</td>
+                                <td class="p-3 text-right">8.100 €</td>
+                                <td class="p-3 text-right">7.900 €</td>
+                                <td class="p-3 text-right">8.200 €</td>
+                                <td class="p-3 text-right font-bold text-gray-600">28.000 €</td>
+                                <td class="p-3 text-right font-bold text-red-600">24.200 €</td>
+                                <td class="p-3 text-center"><span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">Desviado</span></td>
+                                <td class="p-3">
+                                    <select class="text-xs border rounded p-1 bg-white">
+                                        <option>Seleccionar...</option>
+                                        <option>Mailing</option>
+                                        <option selected>Call Center</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl h-64">
+                    <h3 class="font-bold text-gray-700 mb-2">Monitorización Global (Acumulado)</h3>
+                    <div class="relative w-full h-full pb-6">
+                        <canvas id="chartExclusiveGlobal"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-proyectos" class="section-view hidden fade-in">
+                <h2 class="text-2xl font-bold mb-6">Gestión de Proyectos</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-yellow-400">
+                        <div class="flex justify-between mb-4">
+                            <h3 class="font-bold text-lg">Integración CRM</h3>
+                            <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">En Proceso</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-4">Unificación de bases de datos de clientes Corner y Exclusivos.</p>
+                        <div class="flex items-center justify-between mt-4 text-xs text-gray-500">
+                            <span>Resp: IT + Audio</span>
+                            <span>Fin: 20 Dic</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-3"><div class="bg-yellow-400 h-2 rounded-full" style="width: 45%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-servicio-aar" class="section-view hidden fade-in">
+                <h2 class="text-2xl font-bold mb-6">Servicio AAR - Estado de Formación</h2>
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-3 text-left">Centro</th>
+                                <th class="p-3 text-left">Perfil</th>
+                                <th class="p-3 text-center">Estado</th>
+                                <th class="p-3 text-center">Certificado</th>
+                                <th class="p-3 text-center">Procesos</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <tr>
+                                <td class="p-3">4DIA - BARCELONA DIAGONAL</td>
+                                <td class="p-3">Audiólogo</td>
+                                <td class="p-3 text-center"><span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Activo</span></td>
+                                <td class="p-3 text-center text-green-500"><i class="fa-solid fa-check-circle"></i></td>
+                                <td class="p-3 text-center">
+                                    <div class="w-16 h-2 bg-gray-200 rounded-full mx-auto"><div class="bg-blue-500 h-2 rounded-full" style="width: 90%"></div></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="p-3">4AES - NARÓN</td>
+                                <td class="p-3">Técnico</td>
+                                <td class="p-3 text-center"><span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">En Formación</span></td>
+                                <td class="p-3 text-center text-gray-300"><i class="fa-solid fa-circle"></i></td>
+                                <td class="p-3 text-center">
+                                    <div class="w-16 h-2 bg-gray-200 rounded-full mx-auto"><div class="bg-blue-500 h-2 rounded-full" style="width: 40%"></div></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
         </div>
-      </section>
-
-      <!-- CENTROS EXCLUSIVOS -->
-      <section id="exclusivos" class="cca-section">
-        <div class="container-fluid py-3">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title mb-0"><i class="bi bi-gem me-2"></i>Centros exclusivos</h2>
-            <button class="btn btn-sm btn-primary rounded-pill px-3" id="btnNuevoExclusivo">
-              <i class="bi bi-plus-lg me-1"></i>Añadir registro
-            </button>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="cca-panel small">
-                <h5 class="mb-3">Datos por centro</h5>
-                <form id="formExclusivo">
-                  <div class="mb-2">
-                    <label class="form-label">Centro</label>
-                    <input type="text" class="form-control form-control-sm" id="exCentro" />
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Periodo</label>
-                    <select class="form-select form-select-sm" id="exPeriodo">
-                      <option value="ago2025-jul2026">Ago 2025 - Jul 2026</option>
-                    </select>
-                  </div>
-                  <div class="row g-2">
-                    <div class="col-6">
-                      <label class="form-label">Cifra real</label>
-                      <input type="number" class="form-control form-control-sm" id="exCifraReal" />
-                    </div>
-                    <div class="col-6">
-                      <label class="form-label">Cifra estimada</label>
-                      <input type="number" class="form-control form-control-sm" id="exCifraEstimada" />
-                    </div>
-                  </div>
-                  <div class="mb-2 mt-2">
-                    <label class="form-label">Acciones</label>
-                    <select class="form-select form-select-sm" id="exAccion">
-                      <option value="Azafata">Azafata</option>
-                      <option value="Call center">Call center</option>
-                      <option value="Mailing">Mailing</option>
-                      <option value="Ruleta">Ruleta</option>
-                      <option value="Buzoneo">Buzoneo</option>
-                      <option value="Cashback">Cashback</option>
-                      <option value="Comercio amigo">Comercio amigo</option>
-                      <option value="Otros">Otros</option>
-                    </select>
-                  </div>
-                  <div class="row g-2">
-                    <div class="col-6">
-                      <label class="form-label">Derivaciones</label>
-                      <input type="number" class="form-control form-control-sm" id="exDerivaciones" />
-                    </div>
-                    <div class="col-6">
-                      <label class="form-label">Citas</label>
-                      <input type="number" class="form-control form-control-sm" id="exCitas" />
-                    </div>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Observaciones</label>
-                    <textarea class="form-control form-control-sm" id="exObs" rows="2"></textarea>
-                  </div>
-                  <div class="d-flex justify-content-end gap-2">
-                    <button type="reset" class="btn btn-sm btn-outline-secondary">Limpiar</button>
-                    <button type="submit" class="btn btn-sm btn-success">
-                      <i class="bi bi-check-circle me-1"></i>Guardar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
-              <div class="cca-panel mb-3 small">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Monitoreo global</h6>
-                  <span class="small text-muted">Real vs estimado (acumulado)</span>
-                </div>
-                <canvas id="exclusivosChart" height="140"></canvas>
-              </div>
-
-              <div class="cca-panel small">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Detalle por centro</h6>
-                  <input type="text" id="filtroExclusivos" class="form-control form-control-sm w-auto" placeholder="Filtrar..." />
-                </div>
-                <div class="table-responsive" style="max-height:260px;">
-                  <table class="table table-sm table-hover align-middle" id="tablaExclusivos">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Centro</th>
-                        <th>Periodo</th>
-                        <th class="text-end">Real</th>
-                        <th class="text-end">Estimado</th>
-                        <th class="text-end">Dif.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- JS -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- PROYECTOS -->
-      <section id="proyectos" class="cca-section">
-        <div class="container-fluid py-3">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title mb-0"><i class="bi bi-kanban me-2"></i>Proyectos</h2>
-            <button class="btn btn-sm btn-primary rounded-pill px-3" id="btnNuevoProyecto">
-              <i class="bi bi-plus-lg me-1"></i>Nuevo proyecto
-            </button>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="cca-panel small">
-                <h5 class="mb-3">Ficha de proyecto</h5>
-                <form id="formProyecto">
-                  <div class="mb-2">
-                    <label class="form-label">Nombre del proyecto</label>
-                    <input type="text" class="form-control form-control-sm" id="projNombre" />
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Responsable</label>
-                    <input type="text" class="form-control form-control-sm" id="projResponsable" />
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Equipo</label>
-                    <input type="text" class="form-control form-control-sm" id="projEquipo" placeholder="Separar por comas" />
-                  </div>
-                  <div class="row g-2">
-                    <div class="col-6">
-                      <label class="form-label">Fecha inicio</label>
-                      <input type="date" class="form-control form-control-sm" id="projInicio" />
-                    </div>
-                    <div class="col-6">
-                      <label class="form-label">Fecha fin</label>
-                      <input type="date" class="form-control form-control-sm" id="projFin" />
-                    </div>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Estado</label>
-                    <select class="form-select form-select-sm" id="projEstado">
-                      <option value="pendiente">Pendiente</option>
-                      <option value="proceso">En proceso</option>
-                      <option value="terminado">Terminado</option>
-                    </select>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Notas</label>
-                    <textarea class="form-control form-control-sm" id="projNotas" rows="2"></textarea>
-                  </div>
-                  <div class="d-flex justify-content-end gap-2">
-                    <button type="reset" class="btn btn-sm btn-outline-secondary">Limpiar</button>
-                    <button type="submit" class="btn btn-sm btn-success">
-                      <i class="bi bi-check-circle me-1"></i>Guardar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
-              <div class="cca-panel small">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Listado de proyectos</h6>
-                  <input type="text" id="filtroProyectos" class="form-control form-control-sm w-auto" placeholder="Filtrar..." />
-                </div>
-                <div class="table-responsive" style="max-height:340px;">
-                  <table class="table table-sm table-hover align-middle" id="tablaProyectos">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Proyecto</th>
-                        <th>Responsable</th>
-                        <th>Estado</th>
-                        <th>Inicio</th>
-                        <th>Fin</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- JS -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- SERVICIO AAR -->
-      <section id="servicio-aar" class="cca-section">
-        <div class="container-fluid py-3">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="section-title mb-0"><i class="bi bi-headset me-2"></i>Servicio AAR</h2>
-            <button class="btn btn-sm btn-primary rounded-pill px-3" id="btnNuevoAar">
-              <i class="bi bi-plus-lg me-1"></i>Añadir centro
-            </button>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="cca-panel small">
-                <h5 class="mb-3">Centro con Servicio AAR</h5>
-                <form id="formAar">
-                  <div class="mb-2">
-                    <label class="form-label">Centro</label>
-                    <input type="text" class="form-control form-control-sm" id="aarCentro" />
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Estado de formación</label>
-                    <select class="form-select form-select-sm" id="aarEstadoForm">
-                      <option value="formacion">En formación</option>
-                      <option value="certificado">Certificado</option>
-                    </select>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Perfil</label>
-                    <select class="form-select form-select-sm" id="aarPerfil">
-                      <option value="audiologo">Audiólogo</option>
-                      <option value="tecnico">Técnico</option>
-                      <option value="ambos">Ambos</option>
-                    </select>
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Marcador de procesos (0-100%)</label>
-                    <input type="number" min="0" max="100" class="form-control form-control-sm" id="aarProcesos" />
-                  </div>
-                  <div class="mb-2">
-                    <label class="form-label">Observaciones</label>
-                    <textarea class="form-control form-control-sm" id="aarObs" rows="2"></textarea>
-                  </div>
-                  <div class="d-flex justify-content-end gap-2">
-                    <button type="reset" class="btn btn-sm btn-outline-secondary">Limpiar</button>
-                    <button type="submit" class="btn btn-sm btn-success">
-                      <i class="bi bi-check-circle me-1"></i>Guardar</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
-              <div class="cca-panel small mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Estado global</h6>
-                  <span class="small text-muted">Formación / certificados · procesos</span>
-                </div>
-                <canvas id="aarChart" height="140"></canvas>
-              </div>
-
-              <div class="cca-panel small">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Listado de centros AAR</h6>
-                  <input type="text" id="filtroAar" class="form-control form-control-sm w-auto" placeholder="Filtrar..." />
-                </div>
-                <div class="table-responsive" style="max-height:260px;">
-                  <table class="table table-sm table-hover align-middle" id="tablaAar">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Centro</th>
-                        <th>Estado</th>
-                        <th>Perfil</th>
-                        <th class="text-end">Procesos</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <!-- JS -->
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
     </main>
-  </div>
 
-  <!-- Hidden template for informe de visita -->
-  <template id="tplInformeVisita">
-    <div id="informe-visita" class="informe-visita small">
-      <div class="row g-3">
-        <div class="col-md-8">
-          <h6 class="mb-2">Informe de visita audio</h6>
-          <div class="row g-2">
-            <div class="col-md-4">
-              <label class="form-label">Fecha</label>
-              <input type="text" class="form-control form-control-sm" id="infFecha" readonly />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Centro</label>
-              <input type="text" class="form-control form-control-sm" id="infCentro" readonly />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Resp-Audio</label>
-              <input type="text" class="form-control form-control-sm" id="infRespAudio" readonly />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Audiólogo</label>
-              <input type="text" class="form-control form-control-sm" id="infAudiologo" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Horas servicio</label>
-              <input type="number" step="0.5" class="form-control form-control-sm" id="infHoras" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Tipo implantación</label>
-              <div class="d-flex gap-2">
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="infTipo" id="infTipoCorner" value="CORNER">
-                  <label class="form-check-label" for="infTipoCorner">Corner</label>
-                </div>
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" name="infTipo" id="infTipoExclusivo" value="EXCLUSIVO">
-                  <label class="form-check-label" for="infTipoExclusivo">Centro exclusivo</label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Adjuntar checklist Excel</label>
-          <input type="file" id="infChecklist" class="form-control form-control-sm" accept=".xlsx,.xls" />
-          <div class="form-text">Se usarán los KPIs definidos (procesos, HIT, conversión...).</div>
-          <div class="mt-3">
-            <label class="form-label">Indicadores de la visita</label>
-            <canvas id="infChartDonut" height="130"></canvas>
-          </div>
-        </div>
-      </div>
+    <div id="modal-visit" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-96 transform scale-100 transition-transform">
+            <h3 class="font-bold text-xl mb-4 text-brand-dark">Nueva Visita</h3>
+            <p class="text-sm text-gray-500 mb-2">Fecha: <span id="modal-date-display" class="font-semibold text-brand-primary"></span></p>
+            
+            <label class="block text-xs font-bold text-gray-500 mt-3 mb-1">Seleccionar Centro</label>
+            <select id="modal-center-select" class="w-full border p-2 rounded mb-3 text-sm">
+                </select>
 
-      <hr />
+            <label class="block text-xs font-bold text-gray-500 mb-1">Responsable Audio</label>
+            <div class="flex gap-2 mb-6">
+                <button type="button" class="flex-1 py-2 border rounded hover:bg-brand-primary hover:text-white transition text-xs font-bold resp-btn" data-resp="Ariannys Rojas">Ariannys</button>
+                <button type="button" class="flex-1 py-2 border rounded hover:bg-brand-primary hover:text-white transition text-xs font-bold resp-btn" data-resp="Sonia Guasque">Sonia</button>
+            </div>
 
-      <div class="row g-3">
-        <div class="col-md-4">
-          <h6 class="mb-2">Formaciones y dinamización</h6>
-          <div class="informe-scroll">
-            <strong>Formaciones relevantes</strong>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="WSA" id="fWSA">
-              <label class="form-check-label" for="fWSA">WSA</label>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancelar</button>
+                <button onclick="confirmVisit()" class="btn-3d px-4 py-2 bg-brand-success text-white rounded font-bold">Agendar</button>
             </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="Starkey" id="fStarkey">
-              <label class="form-check-label" for="fStarkey">Starkey</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="Ventas" id="fVentas">
-              <label class="form-check-label" for="fVentas">Ventas</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="HIT" id="fHIT">
-              <label class="form-check-label" for="fHIT">HIT</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="Telecare" id="fTelecare">
-              <label class="form-check-label" for="fTelecare">Telecare</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="PIA" id="fPIA">
-              <label class="form-check-label" for="fPIA">PIA</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="Telehear" id="fTelehear">
-              <label class="form-check-label" for="fTelehear">Telehear</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" value="Infinity" id="fInfinity">
-              <label class="form-check-label" for="fInfinity">Infinity</label>
-            </div>
-            <hr />
-            <strong>Dinamización y elementos audio</strong>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="dAudiometria">
-              <label class="form-check-label" for="dAudiometria">Audiometría a RT</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="dTestLectura">
-              <label class="form-check-label" for="dTestLectura">Test de lectura audio</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="dScreening">
-              <label class="form-check-label" for="dScreening">Screening audio</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="dManteleta">
-              <label class="form-check-label" for="dManteleta">Manteleta audio</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="dEscaparate">
-              <label class="form-check-label" for="dEscaparate">Escaparate completo audio</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="dSaludPDV">
-              <label class="form-check-label" for="dSaludPDV">Elementos de salud auditiva en PDV</label>
-            </div>
-          </div>
         </div>
-        <div class="col-md-4">
-          <h6 class="mb-2">Áreas de mejora (automáticas por F=0)</h6>
-          <div class="informe-scroll" id="infAreasMejora">
-            <p class="text-muted small mb-0">Cuando adjuntes el checklist Excel, se buscarán celdas con valor 0 y se listarán aquí como posibles áreas de mejora. Puedes editar el texto posteriormente.</p>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <h6 class="mb-2">Imágenes</h6>
-          <div class="small">
-            <label class="form-label">Exterior</label>
-            <input type="file" class="form-control form-control-sm mb-2 inf-img-input" data-target="infImgExterior" accept="image/*" />
-            <div class="informe-img-preview mb-2">
-              <img id="infImgExterior" alt="Exterior" />
-            </div>
-            <label class="form-label">Interior</label>
-            <input type="file" class="form-control form-control-sm mb-2 inf-img-input" data-target="infImgInterior" accept="image/*" />
-            <div class="informe-img-preview mb-2">
-              <img id="infImgInterior" alt="Interior" />
-            </div>
-            <label class="form-label">Gabinete</label>
-            <input type="file" class="form-control form-control-sm mb-2 inf-img-input" data-target="infImgGabinete" accept="image/*" />
-            <div class="informe-img-preview">
-              <img id="infImgGabinete" alt="Gabinete" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <hr />
-
-      <div class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">Observaciones - Recomendaciones - Compromisos</label>
-          <textarea class="form-control form-control-sm" id="infObservaciones" rows="4"></textarea>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Resumen automático</label>
-          <textarea class="form-control form-control-sm" id="infResumenAuto" rows="4" readonly></textarea>
-        </div>
-      </div>
-
-      <div class="mt-3 d-flex justify-content-end">
-        <button type="button" class="btn btn-danger btn-sm me-2" id="btnCerrarInforme">
-          <i class="bi bi-x-circle me-1"></i>Cerrar
-        </button>
-        <button type="button" class="btn btn-success btn-sm" id="btnGenerarInforme">
-          <i class="bi bi-file-earmark-pdf me-1"></i>Generar informe completo (PDF)
-        </button>
-      </div>
     </div>
-  </template>
 
-  <!-- JS libs -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script>
+        // --- DATOS MOCKADOS (Basados en archivos usuario) ---
+        const centersData = [
+            { id: "4DIA", name: "BARCELONA DIAGONAL", prov: "Barcelona", lat: 41.3851, lng: 2.1734, del: "Eneritz Aranguren", color: 1, kpis: { proc: 85, hit: 1, conv: 45 } },
+            { id: "4AES", name: "NARÓN CASTILLA", prov: "Coruña", lat: 43.516, lng: -8.191, del: "Daniel Chazo", color: 3, kpis: { proc: 92, hit: 1, conv: 52 } },
+            { id: "4ADX", name: "AGUILAS", prov: "Murcia", lat: 37.406, lng: -1.581, del: "Manuel Cánovas", color: 4, kpis: { proc: 70, hit: 0, conv: 30 } },
+            { id: "4AXA", name: "CERDANYOLA", prov: "Barcelona", lat: 41.491, lng: 2.140, del: "Laura Plazas", color: 2, kpis: { proc: 60, hit: 1, conv: 35 } },
+            { id: "4ZAU", name: "ZARAGOZA AUGUSTA", prov: "Zaragoza", lat: 41.648, lng: -0.889, del: "Eneritz Aranguren", color: 1, kpis: { proc: 88, hit: 1, conv: 40 } }
+        ];
 
-  <!-- Custom JS -->
-  <script src="js/state.js"></script>
-  <script src="js/excelReader.js"></script>
-  <script src="js/mapHandler.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/visitas.js"></script>
-  <script src="js/informe.js"></script>
+        let currentVisit = null; // Store data of the active visit being edited
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            initMap();
+            generateCalendar();
+            renderRanking();
+            
+            // Setup Resp selection logic
+            document.querySelectorAll('.resp-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.resp-btn').forEach(b => b.classList.remove('bg-brand-primary', 'text-white'));
+                    this.classList.add('bg-brand-primary', 'text-white');
+                    this.setAttribute('data-selected', 'true');
+                });
+            });
+        });
+
+        // --- NAVEGACIÓN ---
+        function showSection(id) {
+            // Ocultar todas
+            document.querySelectorAll('.section-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('bg-gray-700'));
+            
+            // Mostrar activa
+            document.getElementById(`sec-${id}`).classList.remove('hidden');
+            event.currentTarget.classList.add('bg-gray-700');
+
+            // Resize map if showing centers (Leaflet bug fix)
+            if(id === 'centros' && window.map) {
+                setTimeout(() => window.map.invalidateSize(), 100);
+            }
+        }
+
+        // --- MAPA LEAFLET ---
+        function initMap() {
+            window.map = L.map('map').setView([40.416, -3.703], 6); // Centro España
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO'
+            }).addTo(window.map);
+
+            // Iconos coloreados
+            const getIcon = (colorClass) => {
+                return L.divIcon({
+                    className: `custom-div-icon`,
+                    html: `<div style='background-color: ${getColorHex(colorClass)}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);'></div>`,
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                });
+            };
+
+            const getColorHex = (c) => {
+                if(c===1) return '#ef4444'; // Rojo (Eneritz)
+                if(c===2) return '#10b981'; // Verde (Laura)
+                if(c===3) return '#3b82f6'; // Azul (Daniel)
+                return '#f59e0b'; // Amarillo (Manuel)
+            };
+
+            centersData.forEach(c => {
+                L.marker([c.lat, c.lng], { icon: getIcon(c.color) })
+                 .bindPopup(`<b>${c.name}</b><br>${c.del}`)
+                 .addTo(window.map);
+            });
+        }
+
+        // --- GRÁFICOS CHART.JS ---
+        function initCharts() {
+            // Dash 1: Barras
+            new Chart(document.getElementById('chartDash1'), {
+                type: 'bar',
+                data: {
+                    labels: ['Eneritz', 'Daniel', 'Laura', 'Manuel'],
+                    datasets: [{
+                        label: '% Objetivos',
+                        data: [85, 92, 78, 88],
+                        backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'],
+                        borderRadius: 5
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
+            });
+
+            // Dash 2: Línea
+            new Chart(document.getElementById('chartDash2'), {
+                type: 'line',
+                data: {
+                    labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
+                    datasets: [{
+                        label: 'Pruebas',
+                        data: [120, 145, 132, 160],
+                        borderColor: '#3b82f6',
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+            
+            // Exclusivos Global
+            new Chart(document.getElementById('chartExclusiveGlobal'), {
+                type: 'line',
+                data: {
+                    labels: ['Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                    datasets: [
+                        { label: 'Real', data: [50, 52, 48, 60, 65], borderColor: '#10b981', tension: 0.1 },
+                        { label: 'Estimado', data: [48, 50, 52, 54, 56], borderColor: '#9ca3af', borderDash: [5,5] }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // --- LÓGICA DE VISITAS Y EXCEL ---
+        
+        // 1. Calendario
+        function generateCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            // Header dias
+            ['L','M','X','J','V','S','D'].forEach(d => {
+                grid.innerHTML += `<div class="font-bold text-gray-400">${d}</div>`;
+            });
+            // Dias mock mes actual (empieza en Miercoles ej)
+            for(let i=0; i<2; i++) grid.innerHTML += `<div></div>`;
+            for(let i=1; i<=30; i++) {
+                // Simular algunas citas
+                let hasVisit = (i === 12 || i === 15 || i === 20);
+                let colorClass = hasVisit ? (i < 20 ? 'bg-green-100 text-green-700 border-green-300' : 'bg-yellow-100 text-yellow-700 border-yellow-300') : 'hover:bg-gray-100';
+                
+                grid.innerHTML += `
+                    <div onclick="clickDay(${i})" class="cursor-pointer border rounded py-1 ${colorClass} transition text-xs relative">
+                        ${i}
+                        ${hasVisit ? '<span class="absolute top-0 right-0 w-2 h-2 rounded-full ' + (i<20?'bg-green-500':'bg-yellow-500') + '"></span>' : ''}
+                    </div>`;
+            }
+        }
+
+        function clickDay(day) {
+            // Abrir modal
+            document.getElementById('modal-visit').classList.remove('hidden');
+            document.getElementById('modal-visit').classList.add('flex');
+            document.getElementById('modal-date-display').innerText = `${day}/12/2025`;
+            
+            // Llenar select
+            const sel = document.getElementById('modal-center-select');
+            sel.innerHTML = '<option>Seleccionar...</option>';
+            centersData.forEach(c => {
+                sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('modal-visit').classList.add('hidden');
+            document.getElementById('modal-visit').classList.remove('flex');
+        }
+
+        function confirmVisit() {
+            const centerId = document.getElementById('modal-center-select').value;
+            const centerName = document.getElementById('modal-center-select').options[document.getElementById('modal-center-select').selectedIndex].text;
+            
+            // Buscar responsable seleccionado
+            let resp = "Sin Asignar";
+            document.querySelectorAll('.resp-btn').forEach(b => {
+                if(b.classList.contains('bg-brand-primary')) resp = b.getAttribute('data-resp');
+            });
+
+            // Activar UI de Reporte
+            closeModal();
+            startReport(centerName, resp);
+        }
+
+        function startReport(centerName, resp) {
+            document.getElementById('report-header').classList.remove('opacity-50', 'pointer-events-none');
+            document.getElementById('visit-center-name').innerText = centerName;
+            document.getElementById('visit-resp').innerText = resp;
+            document.getElementById('visit-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('status-badge').className = "px-3 py-1 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold";
+            document.getElementById('status-badge').innerText = "En Curso";
+            
+            document.getElementById('report-body').classList.remove('hidden');
+        }
+
+        // 2. LECTURA EXCEL (LA PARTE CLAVE)
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                // Asumimos primera hoja o buscamos por nombre
+                const sheetName = workbook.SheetNames[0]; 
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Lógica Corner vs Exclusivo
+                // Detectamos por nombre archivo o seleccion usuario. Usamos seleccion usuario para simplificar logica aqui
+                const type = document.getElementById('center-type-select').value;
+                
+                let kpiProc, kpiHit, kpiConv, kpiConvVenta;
+
+                // Definiciones de celdas dadas por usuario
+                if (type === 'corner') {
+                    // Corner: Proc=F90, HIT=F63, ConvP=B92, ConvV=B93
+                    // Nota: XLSX usa "F90" directamente
+                    kpiProc = getCellValue(worksheet, 'F90');
+                    kpiHit = getCellValue(worksheet, 'F63');
+                    kpiConv = getCellValue(worksheet, 'B93'); // Venta
+                } else {
+                    // Exclusivo: Proc=F104, HIT=F65, ConvV=I127
+                    kpiProc = getCellValue(worksheet, 'F104');
+                    kpiHit = getCellValue(worksheet, 'F65');
+                    kpiConv = getCellValue(worksheet, 'I127');
+                }
+
+                // Renderizar datos en Dashboard Visita
+                animateValue('kpi-proc', kpiProc * 100, "%"); // Asumiendo que es decimal 0.85
+                animateValue('kpi-hit', kpiHit, "");
+                animateValue('kpi-conv', kpiConv * 100, "%");
+
+                // Buscar Areas de Mejora (F=0)
+                // Escaneamos columna F en un rango razonable (ej. fila 10 a 150)
+                const issues = [];
+                for(let r=10; r<150; r++) {
+                    const cellVal = getCellValue(worksheet, 'F'+r);
+                    const labelVal = getCellValue(worksheet, 'B'+r); // Asumimos descripcion en B
+                    
+                    if(cellVal === 0 && labelVal && labelVal.length > 5) {
+                        issues.push(labelVal);
+                    }
+                }
+                
+                const list = document.getElementById('areas-mejora-list');
+                list.innerHTML = "";
+                if(issues.length > 0) {
+                    issues.slice(0, 5).forEach(iss => list.innerHTML += `<li>${iss}</li>`); // Mostrar top 5
+                    if(issues.length > 5) list.innerHTML += `<li class="text-gray-400">+ ${issues.length - 5} más...</li>`;
+                } else {
+                    list.innerHTML = `<li class="text-green-500">Todo Correcto!</li>`;
+                }
+
+                // Renderizar Grafico Radar
+                renderRadar([kpiProc*100, Math.random()*100, Math.random()*100, kpiConv*100, 80]);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function getCellValue(sheet, address) {
+            const cell = sheet[address];
+            return (cell ? cell.v : 0);
+        }
+
+        function animateValue(id, end, suffix) {
+            const obj = document.getElementById(id);
+            let start = 0;
+            if (end === 0) { obj.innerHTML = "0" + suffix; return; }
+            let duration = 1000;
+            let startTime = null;
+
+            function step(timestamp) {
+                if (!startTime) startTime = timestamp;
+                let progress = Math.min((timestamp - startTime) / duration, 1);
+                obj.innerHTML = Math.floor(progress * end) + suffix;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            }
+            window.requestAnimationFrame(step);
+        }
+
+        function renderRadar(dataPoints) {
+            const ctx = document.getElementById('chartRadarSkills');
+            if(window.radarChart) window.radarChart.destroy(); // Destruir previo si existe
+
+            window.radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Procesos', 'Orden', 'Anamnesis', 'Cierre', 'Post-Venta'],
+                    datasets: [{
+                        label: 'Evaluación',
+                        data: dataPoints,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { r: { min: 0, max: 100, ticks: { display: false } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function clearReport() {
+            document.getElementById('kpi-proc').innerText = "-";
+            document.getElementById('kpi-hit').innerText = "-";
+            document.getElementById('kpi-conv').innerText = "-";
+            document.getElementById('areas-mejora-list').innerHTML = '<li class="italic text-gray-400">Esperando datos...</li>';
+            if(window.radarChart) window.radarChart.destroy();
+            document.getElementById('excel-upload').value = "";
+        }
+
+        // --- EXPORTAR HTML ---
+        function downloadHTML() {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ControlCenterAudio_Guardado.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // --- RANKING TABLE FILL ---
+        function renderRanking() {
+            const tbody = document.getElementById('rankingTableBody');
+            centersData.sort((a,b) => b.kpis.conv - a.kpis.conv).forEach(c => {
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-2 py-2 font-medium truncate" title="${c.name}">${c.name.substring(0,15)}...</td>
+                        <td class="px-2 py-2 text-xs text-gray-500">${c.del.split(' ')[0]}</td>
+                        <td class="px-2 py-2 text-right font-bold ${c.kpis.conv > 40 ? 'text-green-600':'text-yellow-600'}">${c.kpis.conv}%</td>
+                        <td class="px-2 py-2 text-center">${c.kpis.hit ? '<i class="fa-solid fa-check text-green-500"></i>' : '<i class="fa-solid fa-x text-red-300"></i>'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+    </script>
 </body>
 </html>
-"""
-
-with open(os.path.join(base_dir, "index.html"), "w", encoding="utf-8") as f:
-    f.write(index_html)
-
-css_content = """
-:root {
-  --cca-bg: #0f172a;
-  --cca-bg-soft: rgba(15, 23, 42, 0.88);
-  --cca-panel-bg: rgba(15, 23, 42, 0.96);
-  --cca-accent: #f97316;
-  --cca-accent-soft: rgba(249, 115, 22, 0.2);
-  --cca-border: rgba(148, 163, 184, 0.3);
-  --cca-text-main: #e5e7eb;
-  --cca-text-soft: #9ca3af;
-}
-
-body.cca-body {
-  min-height: 100vh;
-  background: radial-gradient(circle at top left, #1e293b 0, #020617 45%, #020617 100%);
-  color: var(--cca-text-main);
-  font-size: 0.9rem;
-}
-
-.cca-app {
-  min-height: 100vh;
-}
-
-/* Sidebar */
-.cca-sidebar {
-  width: 230px;
-  background: linear-gradient(180deg, #111827 0%, #020617 80%);
-  border-right: 1px solid var(--cca-border);
-  color: #e5e7eb;
-}
-
-.cca-sidebar-nav .nav-link {
-  border-radius: 0;
-  color: var(--cca-text-soft);
-  padding: 0.8rem 1.5rem;
-  text-align: left;
-  font-weight: 500;
-  border-left: 3px solid transparent;
-}
-
-.cca-sidebar-nav .nav-link i {
-  font-size: 1rem;
-}
-
-.cca-sidebar-nav .nav-link:hover {
-  background: rgba(15, 23, 42, 0.9);
-  color: #f9fafb;
-}
-
-.cca-sidebar-nav .nav-link.active {
-  background: linear-gradient(90deg, rgba(249,115,22,0.25), transparent);
-  color: #fefce8;
-  border-left-color: var(--cca-accent);
-}
-
-/* Main + Topbar */
-.cca-main {
-  display: flex;
-  flex-direction: column;
-}
-
-.cca-topbar {
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid var(--cca-border);
-  background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), rgba(15, 23, 42, 0.96));
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.cca-search-input {
-  padding-left: 2.2rem;
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  color: #e5e7eb;
-}
-
-.cca-search-input::placeholder {
-  color: #6b7280;
-}
-
-.cca-search-icon {
-  position: absolute;
-  left: 0.9rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-  font-size: 0.95rem;
-}
-
-/* 3D buttons */
-.btn-cca-3d {
-  border-radius: 999px;
-  border: none;
-  padding: 0.5rem 0.7rem;
-  background: radial-gradient(circle at 30% 0%, rgba(248, 250, 252, 0.25), rgba(148, 163, 184, 0.15));
-  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.75), inset 0 0 0 1px rgba(148, 163, 184, 0.4);
-  color: #e5e7eb;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-}
-
-.btn-cca-3d:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.9), inset 0 0 0 1px rgba(249, 250, 251, 0.5);
-  background: radial-gradient(circle at 30% 0%, rgba(248, 250, 252, 0.45), rgba(148, 163, 184, 0.25));
-}
-
-.btn-cca-3d:active {
-  transform: translateY(1px) scale(0.98);
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.8);
-}
-
-/* Sections */
-.cca-section {
-  display: none;
-}
-
-.cca-section.active {
-  display: block;
-}
-
-.section-title {
-  font-size: 1.15rem;
-}
-
-/* Panels */
-.cca-panel {
-  border-radius: 1rem;
-  padding: 1rem 1.1rem;
-  background: radial-gradient(circle at top left, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.95));
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
-}
-
-/* KPI cards */
-.cca-kpi-card {
-  border-radius: 1rem;
-  padding: 0.9rem 1rem;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.4));
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.95);
-}
-
-.kpi-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--cca-text-soft);
-}
-
-.kpi-value {
-  font-size: 1.3rem;
-  font-weight: 700;
-}
-
-.kpi-sub {
-  font-size: 0.75rem;
-  color: var(--cca-text-soft);
-}
-
-/* Mini KPI */
-.mini-kpi-label {
-  font-size: 0.7rem;
-  color: var(--cca-text-soft);
-}
-
-.mini-kpi-value {
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-/* Tables */
-.table {
-  color: #e5e7eb;
-}
-
-.table thead.table-light {
-  background: rgba(15, 23, 42, 0.9);
-  color: #e5e7eb;
-}
-
-.table-hover tbody tr:hover {
-  background-color: rgba(15, 23, 42, 0.85);
-}
-
-/* Map */
-.cca-map {
-  width: 100%;
-  height: 280px;
-  border-radius: 0.75rem;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-}
-
-/* Calendario visitas */
-#visitasCalendar table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: 0.8rem;
-}
-
-#visitasCalendar th,
-#visitasCalendar td {
-  text-align: center;
-  padding: 0.4rem 0.1rem;
-}
-
-#visitasCalendar th {
-  color: var(--cca-text-soft);
-}
-
-#visitasCalendar td {
-  cursor: pointer;
-  border-radius: 0.4rem;
-}
-
-#visitasCalendar td:hover {
-  background: rgba(30, 64, 175, 0.3);
-}
-
-.cal-dia-actual {
-  border: 1px solid var(--cca-accent);
-}
-
-.cal-dia-sin-mes {
-  opacity: 0.3;
-}
-
-.estado-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-}
-
-.estado-pendiente {
-  background: #facc15;
-}
-
-.estado-realizada {
-  background: #22c55e;
-}
-
-.estado-anulada {
-  background: #ef4444;
-}
-
-/* Informe visita */
-.informe-visita {
-  border-radius: 1rem;
-  border: 1px dashed rgba(148, 163, 184, 0.6);
-  padding: 0.8rem;
-  background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.9));
-}
-
-.informe-scroll {
-  max-height: 260px;
-  overflow-y: auto;
-  padding-right: 0.25rem;
-}
-
-.informe-img-preview {
-  background: rgba(15, 23, 42, 0.8);
-  border-radius: 0.5rem;
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.informe-img-preview img {
-  max-height: 85px;
-  max-width: 100%;
-  object-fit: contain;
-}
-
-/* Util */
-.text-light-50 {
-  color: rgba(209, 213, 219, 0.5);
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-  .cca-sidebar {
-    display: none;
-  }
-  .cca-main {
-    width: 100%;
-  }
-}
-"""
-
-with open(os.path.join(base_dir, "css", "style.css"), "w", encoding="utf-8") as f:
-    f.write(css_content)
-
-state_js = """
-// Estado global de la aplicación
-window.CCAState = {
-  centros: [],
-  visitas: [],
-  exclusivos: [],
-  proyectos: [],
-  aar: []
-};
-
-window.CCACharts = {};
-window.CCAMap = null;
-window.CCADelegadoColors = {};
-
-// Utilidad para generar colores por delegado
-function getColorForDelegado(nombre) {
-  if (!nombre) return "#38bdf8";
-  if (window.CCADelegadoColors[nombre]) return window.CCADelegadoColors[nombre];
-  const palette = ["#f97316", "#22c55e", "#38bdf8", "#eab308", "#a855f7", "#ec4899", "#0ea5e9", "#facc15"];
-  const idx = Object.keys(window.CCADelegadoColors).length % palette.length;
-  window.CCADelegadoColors[nombre] = palette[idx];
-  return window.CCADelegadoColors[nombre];
-}
-
-// Guardado / carga localStorage
-function saveStateLocal() {
-  try {
-    localStorage.setItem("CCAState", JSON.stringify(window.CCAState));
-    alert("Estado guardado localmente.");
-  } catch (e) {
-    console.error(e);
-    alert("No se pudo guardar el estado localmente.");
-  }
-}
-
-function loadStateLocal() {
-  try {
-    const raw = localStorage.getItem("CCAState");
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (data && typeof data === "object") {
-      window.CCAState = Object.assign(window.CCAState, data);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// Export / import JSON (simulación nube)
-function exportStateJSON() {
-  const blob = new Blob([JSON.stringify(window.CCAState, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "control-center-audio-backup.json";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function importStateJSON(file) {
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (data && typeof data === "object") {
-        window.CCAState = Object.assign(window.CCAState, data);
-        alert("Backup cargado. Refresca las vistas para ver los datos.");
-        // Podrías llamar aquí a funciones de refresco si quieres que sea automático.
-      }
-    } catch (err) {
-      console.error(err);
-      alert("El archivo no es un backup válido.");
-    }
-  };
-  reader.readAsText(file);
-}
-
-// Descargar HTML actual
-function downloadCurrentHTML() {
-  const html = "<!DOCTYPE html>" + document.documentElement.outerHTML;
-  const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "ControlCenterAudio-export.html";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-"""
-
-with open(os.path.join(base_dir, "js", "state.js"), "w", encoding="utf-8") as f:
-    f.write(state_js)
-
-excel_js = """
-// Lectura de Excel para KPIs definidos
-async function parseChecklistFile(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-
-        const nombre = (file.name || "").toLowerCase();
-        let tipo = "CORNER";
-        if (nombre.includes("exclu")) tipo = "EXCLUSIVO";
-        else if (nombre.includes("corner")) tipo = "CORNER";
-
-        function getCell(addr) {
-          const cell = sheet[addr];
-          return cell ? cell.v : null;
-        }
-
-        let procesos, aplicaHit, convPrueba, convVenta;
-
-        if (tipo === "CORNER") {
-          procesos = getCell("F90");
-          aplicaHit = getCell("F63");
-          convPrueba = getCell("B92");
-          convVenta = getCell("B93");
-        } else {
-          procesos = getCell("F104");
-          aplicaHit = getCell("F65");
-          convPrueba = getCell("I126");
-          convVenta = getCell("I127");
-        }
-
-        // Búsqueda genérica de celdas con 0 como áreas de mejora
-        const areasMejora = [];
-        const range = XLSX.utils.decode_range(sheet["!ref"] || "A1:A1");
-        for (let R = range.s.r; R <= range.e.r; ++R) {
-          for (let C = range.s.c; C <= range.e.c; ++C) {
-            const addr = XLSX.utils.encode_cell({ r: R, c: C });
-            const cell = sheet[addr];
-            if (!cell) continue;
-            if (cell.v === 0 || cell.v === "0") {
-              areasMejora.push("Celda " + addr + " = 0");
-            }
-          }
-        }
-
-        resolve({
-          tipo,
-          procesos: Number(procesos) || 0,
-          aplicaHit: Number(aplicaHit) || 0,
-          convPrueba: Number(convPrueba) || 0,
-          convVenta: Number(convVenta) || 0,
-          areasMejora
-        });
-      } catch (err) {
-        console.error(err);
-        reject(err);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
-  });
-}
-"""
-
-with open(os.path.join(base_dir, "js", "excelReader.js"), "w", encoding="utf-8") as f:
-    f.write(excel_js)
-
-map_js = """
-function initCCAMap(elementId) {
-  const mapElement = document.getElementById(elementId);
-  if (!mapElement) return null;
-  const map = L.map(elementId, {
-    center: [40.0, -3.7],
-    zoom: 5.2,
-    zoomControl: true
-  });
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18,
-    attribution: "© OpenStreetMap"
-  }).addTo(map);
-  return map;
-}
-
-function refreshMaps() {
-  // dashboard map
-  if (!window.CCACharts.mapInitedDashboard) {
-    window.CCAMapDashboard = initCCAMap("mapCentros");
-    window.CCACharts.mapInitedDashboard = true;
-  }
-  if (!window.CCACharts.mapInitedCentros) {
-    window.CCAMap = initCCAMap("mapCentrosSection");
-    window.CCACharts.mapInitedCentros = true;
-  }
-  drawCentersOnMaps();
-}
-
-function drawCentersOnMaps() {
-  if (!window.CCAMap && !window.CCAMapDashboard) return;
-
-  // Clear existing layers except tile
-  [window.CCAMap, window.CCAMapDashboard].forEach(map => {
-    if (!map) return;
-    map.eachLayer(layer => {
-      if (!(layer instanceof L.TileLayer)) {
-        map.removeLayer(layer);
-      }
-    });
-  });
-
-  window.CCAState.centros.forEach(c => {
-    if (c.lat == null || c.lng == null) return;
-    const color = getColorForDelegado(c.delegado);
-    const markerOptions = {
-      radius: 7,
-      fillColor: color,
-      color: "#0f172a",
-      weight: 1,
-      opacity: 1,
-      fillOpacity: 0.9
-    };
-    [window.CCAMap, window.CCAMapDashboard].forEach(map => {
-      if (!map) return;
-      const circle = L.circleMarker([c.lat, c.lng], markerOptions).addTo(map);
-      circle.bindPopup("<strong>" + (c.nombre || "") + "</strong><br/>" + (c.delegado || "") + "<br/><span class='badge bg-secondary'>" + (c.tipo || "") + "</span>");
-    });
-  });
-}
-"""
-
-with open(os.path.join(base_dir, "js", "mapHandler.js"), "w", encoding="utf-8") as f:
-    f.write(map_js)
-
-dashboard_js = """
-document.addEventListener("DOMContentLoaded", () => {
-  // Cargar estado previo si existe
-  loadStateLocal();
-
-  // Navegación lateral
-  document.querySelectorAll(".cca-sidebar-nav .nav-link").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".cca-sidebar-nav .nav-link").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const target = btn.getAttribute("data-section");
-      document.querySelectorAll(".cca-section").forEach(sec => sec.classList.remove("active"));
-      document.getElementById(target).classList.add("active");
-      if (target === "centros") refreshMaps();
-      if (target === "dashboard") {
-        refreshMaps();
-        updateDashboardCharts();
-      }
-    });
-  });
-
-  // Botones topbar
-  document.getElementById("btnSaveLocal").addEventListener("click", saveStateLocal);
-  document.getElementById("btnSaveCloud").addEventListener("click", exportStateJSON);
-  document.getElementById("btnDownloadHtml").addEventListener("click", downloadCurrentHTML);
-  document.getElementById("btnLoadCloud").addEventListener("click", () => {
-    document.getElementById("cloudFileInput").click();
-  });
-  document.getElementById("cloudFileInput").addEventListener("change", e => {
-    const file = e.target.files[0];
-    if (file) importStateJSON(file);
-  });
-
-  // Buscador global muy sencillo (marca texto)
-  const globalSearch = document.getElementById("globalSearch");
-  globalSearch.addEventListener("input", () => {
-    const term = globalSearch.value.trim().toLowerCase();
-    document.querySelectorAll(".cca-section.active table tbody tr").forEach(tr => {
-      if (!term) {
-        tr.classList.remove("d-none");
-        return;
-      }
-      const text = tr.innerText.toLowerCase();
-      tr.classList.toggle("d-none", !text.includes(term));
-    });
-  });
-
-  initCentrosSection();
-  initVisitasSection();
-  initExclusivosSection();
-  initProyectosSection();
-  initAarSection();
-
-  // Inicializar gráficos generales
-  initDashboardCharts();
-  refreshMaps();
-  updateDashboardCharts();
-});
-
-/* --------- Dashboard charts ---------- */
-function initDashboardCharts() {
-  const kpiCtx = document.getElementById("kpiChart");
-  if (kpiCtx) {
-    window.CCACharts.kpiChart = new Chart(kpiCtx, {
-      type: "bar",
-      data: {
-        labels: ["% Procesos", "Conv. prueba", "Conv. venta"],
-        datasets: [{
-          label: "Media global",
-          data: [0, 0, 0]
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: value => value + "%"
-            }
-          }
-        }
-      }
-    });
-  }
-
-  const vCtx = document.getElementById("visitasChart");
-  if (vCtx) {
-    window.CCACharts.visitasChart = new Chart(vCtx, {
-      type: "doughnut",
-      data: {
-        labels: ["Pendientes", "Realizadas", "Anuladas"],
-        datasets: [{
-          data: [0, 0, 0]
-        }]
-      },
-      options: {
-        plugins: {
-          legend: { position: "bottom" }
-        }
-      }
-    });
-  }
-}
-
-function updateDashboardCharts() {
-  // KPIs globales
-  const centros = window.CCAState.centros;
-  let sumProc = 0, sumPrueba = 0, sumVenta = 0, hitCount = 0, hitAplica = 0;
-  centros.forEach(c => {
-    if (c.kpis) {
-      sumProc += c.kpis.procesos || 0;
-      sumPrueba += c.kpis.convPrueba || 0;
-      sumVenta += c.kpis.convVenta || 0;
-      if (c.kpis.aplicaHit) {
-        hitCount++;
-        hitAplica += c.kpis.aplicaHit;
-      }
-    }
-  });
-  const n = centros.length || 1;
-  const mediaProc = sumProc / n;
-  const mediaPrueba = sumPrueba / n;
-  const mediaVenta = sumVenta / n;
-
-  document.getElementById("kpiProcesos").innerText = mediaProc.toFixed(1) + "%";
-  document.getElementById("kpiPrueba").innerText = mediaPrueba.toFixed(1) + "%";
-  document.getElementById("kpiVenta").innerText = mediaVenta.toFixed(1) + "%";
-  document.getElementById("kpiHit").innerText = hitCount.toString();
-
-  if (window.CCACharts.kpiChart) {
-    window.CCACharts.kpiChart.data.datasets[0].data = [mediaProc, mediaPrueba, mediaVenta];
-    window.CCACharts.kpiChart.update();
-  }
-
-  // Visitas
-  const visitas = window.CCAState.visitas;
-  let pend = 0, real = 0, anul = 0;
-  visitas.forEach(v => {
-    if (v.estado === "pendiente") pend++;
-    else if (v.estado === "realizada") real++;
-    else if (v.estado === "anulada") anul++;
-  });
-  if (window.CCACharts.visitasChart) {
-    window.CCACharts.visitasChart.data.datasets[0].data = [pend, real, anul];
-    window.CCACharts.visitasChart.update();
-  }
-
-  // Ranking de centros
-  renderRankingCentros();
-}
-
-/* --------- Centors section ---------- */
-
-function initCentrosSection() {
-  const form = document.getElementById("formCentro");
-  const filtro = document.getElementById("filtroCentros");
-  const tablaBody = document.querySelector("#tablaCentros tbody");
-
-  function renderTabla() {
-    if (!tablaBody) return;
-    tablaBody.innerHTML = "";
-    let data = [...window.CCAState.centros];
-    const term = (filtro.value || "").toLowerCase();
-    if (term) {
-      data = data.filter(c =>
-        (c.nombre || "").toLowerCase().includes(term) ||
-        (c.delegado || "").toLowerCase().includes(term) ||
-        (c.provincia || "").toLowerCase().includes(term)
-      );
-    }
-    data.sort((a, b) => (b.kpis?.convVenta || 0) - (a.kpis?.convVenta || 0));
-    data.forEach(c => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${c.nombre || ""}</td>
-        <td>${c.delegado || ""}</td>
-        <td><span class="badge bg-secondary">${c.tipo || ""}</span></td>
-        <td>${c.provincia || ""}</td>
-        <td class="text-end">${c.kpis ? (c.kpis.convVenta || 0).toFixed(1) + "%" : "-"}</td>
-      `;
-      tr.addEventListener("click", () => {
-        setCentroResumen(c);
-      });
-      tablaBody.appendChild(tr);
-    });
-  }
-
-  filtro.addEventListener("input", renderTabla);
-
-  form.addEventListener("submit", async e => {
-    e.preventDefault();
-    const nombre = document.getElementById("centroNombre").value.trim();
-    if (!nombre) {
-      alert("Introduce al menos el nombre del centro.");
-      return;
-    }
-    const centro = {
-      id: Date.now(),
-      nombre,
-      codigo: document.getElementById("centroCodigo").value.trim(),
-      delegado: document.getElementById("centroDelegado").value.trim(),
-      tipo: document.getElementById("centroTipo").value,
-      provincia: document.getElementById("centroProvincia").value.trim(),
-      lat: parseFloat(document.getElementById("centroLat").value) || null,
-      lng: parseFloat(document.getElementById("centroLng").value) || null,
-      kpis: null
-    };
-
-    const fileInput = document.getElementById("centroChecklist");
-    if (fileInput.files && fileInput.files[0]) {
-      try {
-        const parsed = await parseChecklistFile(fileInput.files[0]);
-        centro.tipo = parsed.tipo || centro.tipo;
-        centro.kpis = parsed;
-        alert("Checklist leído correctamente. KPIs aplicados al centro.");
-      } catch (err) {
-        alert("No se pudo leer el checklist. El centro se guardará sin KPIs.");
-      }
-    }
-
-    window.CCAState.centros.push(centro);
-    form.reset();
-    renderTabla();
-    refreshMaps();
-    updateDashboardCharts();
-  });
-
-  function setCentroResumen(c) {
-    document.getElementById("centroNombre").value = c.nombre || "";
-    document.getElementById("centroCodigo").value = c.codigo || "";
-    document.getElementById("centroDelegado").value = c.delegado || "";
-    document.getElementById("centroTipo").value = c.tipo || "CORNER";
-    document.getElementById("centroProvincia").value = c.provincia || "";
-    document.getElementById("centroLat").value = c.lat || "";
-    document.getElementById("centroLng").value = c.lng || "";
-    if (c.kpis) {
-      document.getElementById("centroKpiProcesos").innerText = c.kpis.procesos.toFixed(1) + "%";
-      document.getElementById("centroKpiHit").innerText = c.kpis.aplicaHit;
-      document.getElementById("centroKpiPrueba").innerText = c.kpis.convPrueba.toFixed(1) + "%";
-      document.getElementById("centroKpiVenta").innerText = c.kpis.convVenta.toFixed(1) + "%";
-    } else {
-      document.getElementById("centroKpiProcesos").innerText = "-";
-      document.getElementById("centroKpiHit").innerText = "-";
-      document.getElementById("centroKpiPrueba").innerText = "-";
-      document.getElementById("centroKpiVenta").innerText = "-";
-    }
-  }
-
-  renderTabla();
-  refreshMaps();
-}
-
-// Ranking en dashboard
-function renderRankingCentros() {
-  const tbody = document.querySelector("#tablaRankingCentros tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  const data = [...window.CCAState.centros].sort((a, b) => (b.kpis?.convVenta || 0) - (a.kpis?.convVenta || 0));
-  data.forEach(c => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${c.nombre || ""}</td>
-      <td>${c.delegado || ""}</td>
-      <td><span class="badge bg-secondary">${c.tipo || ""}</span></td>
-      <td class="text-end">${c.kpis ? (c.kpis.convVenta || 0).toFixed(1) + "%" : "-"}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-/* --------- Exclusivos section ---------- */
-function initExclusivosSection() {
-  const form = document.getElementById("formExclusivo");
-  const filtro = document.getElementById("filtroExclusivos");
-  const tablaBody = document.querySelector("#tablaExclusivos tbody");
-
-  function renderTabla() {
-    tablaBody.innerHTML = "";
-    let data = [...window.CCAState.exclusivos];
-    const term = (filtro.value || "").toLowerCase();
-    if (term) {
-      data = data.filter(e =>
-        (e.centro || "").toLowerCase().includes(term)
-      );
-    }
-    data.forEach(e => {
-      const diff = e.cifraReal - e.cifraEstimada;
-      const diffStr = (diff >= 0 ? "+" : "") + diff.toFixed(0);
-      const cls = diff >= 0 ? "text-success" : "text-danger";
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${e.centro || ""}</td>
-        <td>${e.periodo || ""}</td>
-        <td class="text-end">${e.cifraReal.toFixed(0)}</td>
-        <td class="text-end">${e.cifraEstimada.toFixed(0)}</td>
-        <td class="text-end ${cls}">${diffStr}</td>
-      `;
-      tablaBody.appendChild(tr);
-    });
-  }
-
-  function refreshChart() {
-    const ctx = document.getElementById("exclusivosChart");
-    if (!ctx) return;
-    const totalReal = window.CCAState.exclusivos.reduce((s, e) => s + (e.cifraReal || 0), 0);
-    const totalEst = window.CCAState.exclusivos.reduce((s, e) => s + (e.cifraEstimada || 0), 0);
-    if (!window.CCACharts.exclusivosChart) {
-      window.CCACharts.exclusivosChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: ["Real acumulado", "Estimado acumulado"],
-          datasets: [{
-            data: [totalReal, totalEst]
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: false }
-          }
-        }
-      });
-    } else {
-      window.CCACharts.exclusivosChart.data.datasets[0].data = [totalReal, totalEst];
-      window.CCACharts.exclusivosChart.update();
-    }
-  }
-
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    const reg = {
-      id: Date.now(),
-      centro: document.getElementById("exCentro").value.trim(),
-      periodo: document.getElementById("exPeriodo").value,
-      cifraReal: Number(document.getElementById("exCifraReal").value) || 0,
-      cifraEstimada: Number(document.getElementById("exCifraEstimada").value) || 0,
-      accion: document.getElementById("exAccion").value,
-      derivaciones: Number(document.getElementById("exDerivaciones").value) || 0,
-      citas: Number(document.getElementById("exCitas").value) || 0,
-      obs: document.getElementById("exObs").value
-    };
-    window.CCAState.exclusivos.push(reg);
-    form.reset();
-    renderTabla();
-    refreshChart();
-  });
-
-  filtro.addEventListener("input", renderTabla);
-
-  renderTabla();
-  refreshChart();
-}
-
-/* --------- Proyectos section ---------- */
-function initProyectosSection() {
-  const form = document.getElementById("formProyecto");
-  const filtro = document.getElementById("filtroProyectos");
-  const tablaBody = document.querySelector("#tablaProyectos tbody");
-
-  function renderTabla() {
-    tablaBody.innerHTML = "";
-    let data = [...window.CCAState.proyectos];
-    const term = (filtro.value || "").toLowerCase();
-    if (term) {
-      data = data.filter(p =>
-        (p.nombre || "").toLowerCase().includes(term) ||
-        (p.responsable || "").toLowerCase
