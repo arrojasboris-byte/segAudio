@@ -1,810 +1,444 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Center Audio - Dashboard</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            dark: '#1e293b',
-                            primary: '#3b82f6',
-                            accent: '#ef4444',
-                            success: '#10b981',
-                            warning: '#f59e0b',
-                            bg: '#f3f4f6'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+<title>Gestión Audio - Plataforma Mejorada</title>
 
-    <style>
-        /* Estilos 3D y Personalizados */
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f3f4f6; overflow: hidden; }
-        
-        .btn-3d {
-            transition: all 0.1s;
-            border-bottom: 4px solid rgba(0,0,0,0.2);
-        }
-        .btn-3d:active {
-            transform: translateY(2px);
-            border-bottom: 0px solid rgba(0,0,0,0.2);
-        }
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
+<style>
+/* ===========================
+   ESTILOS GENERALES
+   =========================== */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+}
 
-        .scroll-hidden::-webkit-scrollbar { width: 6px; }
-        .scroll-hidden::-webkit-scrollbar-track { background: #f1f1f1; }
-        .scroll-hidden::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+/* Colores corporativos */
+:root {
+    --rojo: #E60000;
+    --negro: #111;
+    --gris: #d9d9d9;
+    --blanco: #fff;
+}
 
-        /* Animaciones */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+/* ===========================
+   SIDEBAR
+   =========================== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 240px;
+    height: 100vh;
+    background: var(--negro);
+    color: var(--blanco);
+    padding-top: 20px;
+}
 
-        /* Colores Delegados para Mapa */
-        .marker-color-1 { filter: hue-rotate(0deg); }   /* Rojo */
-        .marker-color-2 { filter: hue-rotate(120deg); } /* Verde */
-        .marker-color-3 { filter: hue-rotate(240deg); } /* Azul */
-        .marker-color-4 { filter: hue-rotate(60deg); }  /* Amarillo */
-    </style>
+.sidebar h2 {
+    text-align: center;
+    color: var(--rojo);
+    margin-bottom: 30px;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.sidebar a {
+    display: block;
+    padding: 14px 22px;
+    color: var(--blanco);
+    text-decoration: none;
+    font-size: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: var(--rojo);
+}
+
+/* ===========================
+   HEADER
+   =========================== */
+.header {
+    margin-left: 240px;
+    height: 60px;
+    background: var(--blanco);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 25px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* ===========================
+   CONTENIDO PRINCIPAL
+   =========================== */
+.main {
+    margin-left: 240px;
+    padding: 30px;
+}
+
+/* Tarjetas KPI */
+.kpi-box {
+    background: var(--blanco);
+    width: 180px;
+    padding: 18px;
+    border-radius: 12px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    border-left: 6px solid var(--rojo);
+}
+
+.kpi-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--negro);
+}
+
+.kpi-value {
+    font-size: 26px;
+    margin-top: 8px;
+    color: var(--rojo);
+}
+
+/* Titulares */
+.section-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin: 20px 0 10px 0;
+    color: var(--rojo);
+}
+
+/* Gráficos */
+.chart-container {
+    background: var(--blanco);
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+</style>
 </head>
-<body class="h-screen flex text-gray-800">
+<body>
+<!-- ===========================
+     SIDEBAR LATERAL
+     =========================== -->
+<div class="sidebar">
+    <h2>GESTIÓN AUDIO</h2>
 
-    <aside class="w-64 bg-brand-dark text-white flex flex-col shadow-2xl z-20">
-        <div class="p-6 flex items-center gap-3 border-b border-gray-700">
-            <i class="fa-solid fa-wave-square text-brand-primary text-2xl"></i>
-            <div>
-                <h1 class="font-bold text-lg leading-tight">Control Center</h1>
-                <p class="text-xs text-gray-400">Audio Management</p>
-            </div>
-        </div>
+    <a class="active" onclick="showPage('dashboard')">📊 Dashboard</a>
+    <a onclick="showPage('centros')">📍 Centros</a>
+    <a onclick="showPage('visitas')">📅 Visitas</a>
+    <a onclick="showPage('exclusivos')">⭐ Exclusivos</a>
+    <a onclick="showPage('aar')">🎧 Servicio AAR</a>
+    <a onclick="showPage('proyectos')">📂 Proyectos</a>
+</div>
 
-        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-            <button onclick="showSection('dashboard')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3 bg-gray-700">
-                <i class="fa-solid fa-chart-pie w-6 text-center"></i> Dashboard Global
-            </button>
-            <div class="pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Gestión</div>
-            <button onclick="showSection('centros')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
-                <i class="fa-solid fa-map-location-dot w-6 text-center"></i> Centros
-            </button>
-            <button onclick="showSection('visitas')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
-                <i class="fa-solid fa-calendar-check w-6 text-center"></i> Visitas Audio
-            </button>
-            <button onclick="showSection('exclusivos')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
-                <i class="fa-solid fa-gem w-6 text-center"></i> Centros Exclusivos
-            </button>
-            
-            <div class="pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Desarrollo</div>
-            <button onclick="showSection('proyectos')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
-                <i class="fa-solid fa-diagram-project w-6 text-center"></i> Proyectos
-            </button>
-            <button onclick="showSection('servicio-aar')" class="nav-btn w-full text-left p-3 rounded-lg hover:bg-gray-700 transition flex items-center gap-3">
-                <i class="fa-solid fa-user-graduate w-6 text-center"></i> Servicio AAR
-            </button>
-        </nav>
-
-        <div class="p-4 border-t border-gray-700">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-400 to-purple-500"></div>
-                <div>
-                    <p class="text-sm font-bold">Admin User</p>
-                    <p class="text-xs text-green-400">Online</p>
-                </div>
-            </div>
-        </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
-        
-        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
-            <div class="relative w-96">
-                <i class="fa-solid fa-search absolute left-3 top-3 text-gray-400"></i>
-                <input type="text" placeholder="Buscar centro, delegado, KPI..." class="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary transition">
-            </div>
-
-            <div class="flex gap-4">
-                <button class="btn-3d bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-600">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Nube
-                </button>
-                <button class="btn-3d bg-green-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-green-600">
-                    <i class="fa-solid fa-sync"></i> Actualizar
-                </button>
-                <button class="btn-3d bg-gray-800 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-gray-900" onclick="downloadHTML()">
-                    <i class="fa-solid fa-download"></i> Descargar HTML
-                </button>
-            </div>
-        </header>
-
-        <div id="content-area" class="flex-1 overflow-y-auto p-6 bg-gray-50 relative scroll-hidden">
-            
-            <div id="sec-dashboard" class="section-view fade-in">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800">Visión General</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div class="glass-panel p-4 rounded-xl border-l-4 border-blue-500">
-                        <div class="text-gray-500 text-sm font-semibold uppercase">Total Centros Audio</div>
-                        <div class="text-3xl font-bold text-gray-800 mt-2">142</div>
-                        <div class="text-xs text-green-500 mt-1"><i class="fa-solid fa-arrow-up"></i> +5 este mes</div>
-                    </div>
-                    <div class="glass-panel p-4 rounded-xl border-l-4 border-purple-500">
-                        <div class="text-gray-500 text-sm font-semibold uppercase">Visitas Realizadas</div>
-                        <div class="text-3xl font-bold text-gray-800 mt-2">87%</div>
-                        <div class="text-xs text-gray-400 mt-1">Objetivo mensual</div>
-                    </div>
-                    <div class="glass-panel p-4 rounded-xl border-l-4 border-green-500">
-                        <div class="text-gray-500 text-sm font-semibold uppercase">Conversión Venta</div>
-                        <div class="text-3xl font-bold text-gray-800 mt-2">42.5%</div>
-                        <div class="text-xs text-green-500 mt-1">↑ 2.1% vs estimación</div>
-                    </div>
-                    <div class="glass-panel p-4 rounded-xl border-l-4 border-red-500">
-                        <div class="text-gray-500 text-sm font-semibold uppercase">Alertas Stock</div>
-                        <div class="text-3xl font-bold text-gray-800 mt-2">12</div>
-                        <div class="text-xs text-red-500 mt-1">Requieren atención</div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-80">
-                    <div class="glass-panel p-6 rounded-xl">
-                        <h3 class="font-bold mb-4">Rendimiento por Delegado (Ventas)</h3>
-                        <canvas id="chartDash1"></canvas>
-                    </div>
-                    <div class="glass-panel p-6 rounded-xl">
-                        <h3 class="font-bold mb-4">Evolución Semanal de Pruebas</h3>
-                        <canvas id="chartDash2"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div id="sec-centros" class="section-view hidden fade-in">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Mapa de Centros y Rankings</h2>
-                    <div class="flex gap-2">
-                        <span class="px-3 py-1 rounded-full bg-red-100 text-red-600 text-xs font-bold border border-red-200">Eneritz (Norte)</span>
-                        <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold border border-blue-200">Daniel (Galicia)</span>
-                        <span class="px-3 py-1 rounded-full bg-green-100 text-green-600 text-xs font-bold border border-green-200">Laura (Cataluña)</span>
-                        <span class="px-3 py-1 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold border border-yellow-200">Manuel (Sur)</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-12 gap-6 h-[600px]">
-                    <div class="col-span-4 glass-panel rounded-xl p-4 overflow-y-auto">
-                        <h3 class="font-bold text-lg mb-4 border-b pb-2">Top Centros - KPIs</h3>
-                        
-                        <div class="space-y-4">
-                            <table class="w-full text-sm text-left">
-                                <thead class="text-xs text-gray-500 uppercase bg-gray-50">
-                                    <tr>
-                                        <th class="px-2 py-2">Centro</th>
-                                        <th class="px-2 py-2">Del.</th>
-                                        <th class="px-2 py-2 text-right">Conv %</th>
-                                        <th class="px-2 py-2 text-center">HIT</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="rankingTableBody">
-                                    </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="col-span-8 glass-panel rounded-xl relative overflow-hidden">
-                        <div id="map" class="w-full h-full z-0"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="sec-visitas" class="section-view hidden fade-in pb-20">
-                <div class="flex gap-6 mb-6">
-                    <div class="w-1/3 glass-panel p-6 rounded-xl">
-                        <h3 class="font-bold text-lg mb-4"><i class="fa-regular fa-calendar"></i> Agenda de Visitas</h3>
-                        <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-center text-sm mb-4">
-                            </div>
-                        <div class="mt-4 border-t pt-4">
-                            <h4 class="font-bold text-sm mb-2">Resumen Visitas</h4>
-                            <div class="flex justify-between text-xs mb-1"><span>Pendientes</span> <span class="font-bold text-yellow-500">5</span></div>
-                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2"><div class="bg-yellow-500 h-2 rounded-full" style="width: 20%"></div></div>
-                            
-                            <div class="flex justify-between text-xs mb-1"><span>Realizadas</span> <span class="font-bold text-green-500">12</span></div>
-                            <div class="w-full bg-gray-200 rounded-full h-2 mb-2"><div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div></div>
-                        </div>
-                    </div>
-
-                    <div class="w-2/3 flex flex-col gap-4">
-                        <div id="report-header" class="glass-panel p-6 rounded-xl opacity-50 pointer-events-none transition-all">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h2 class="text-2xl font-bold text-brand-primary" id="visit-center-name">Seleccione una Visita</h2>
-                                    <p class="text-sm text-gray-500">Fecha: <span id="visit-date">--/--/----</span> | Resp: <span id="visit-resp" class="font-semibold text-gray-700">--</span></p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <span id="status-badge" class="px-3 py-1 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">Sin Iniciar</span>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-3 gap-4 mb-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">Audiólogo</label>
-                                    <input type="text" class="w-full border rounded p-1 text-sm bg-white" placeholder="Nombre...">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">Horas Servicio</label>
-                                    <input type="number" class="w-full border rounded p-1 text-sm bg-white" placeholder="0">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 mb-1">Tipo Centro</label>
-                                    <select id="center-type-select" class="w-full border rounded p-1 text-sm bg-white">
-                                        <option value="corner">Corner</option>
-                                        <option value="exclusivo">Exclusivo</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 hover:bg-white transition text-center cursor-pointer relative">
-                                <input type="file" id="excel-upload" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileUpload(this)">
-                                <i class="fa-solid fa-file-excel text-green-600 text-2xl mb-2"></i>
-                                <p class="text-sm text-gray-600 font-medium">Adjuntar Checklist Excel (Arrastra o Click)</p>
-                                <p class="text-xs text-gray-400">Detecta auto: Corner vs Exclusivo</p>
-                            </div>
-                        </div>
-
-                        <div id="report-body" class="glass-panel p-6 rounded-xl hidden fade-in">
-                            <h3 class="font-bold border-b pb-2 mb-4 text-gray-700 flex justify-between">
-                                Resultados Auditoría
-                                <button class="text-xs text-red-500 underline" onclick="clearReport()">Limpiar Datos</button>
-                            </h3>
-                            
-                            <div class="grid grid-cols-3 gap-4 mb-6">
-                                <div class="bg-white p-3 rounded shadow-sm text-center">
-                                    <p class="text-xs text-gray-500">Aplica HIT</p>
-                                    <p id="kpi-hit" class="text-xl font-bold text-gray-800">-</p>
-                                </div>
-                                <div class="bg-white p-3 rounded shadow-sm text-center">
-                                    <p class="text-xs text-gray-500">% Procesos</p>
-                                    <p id="kpi-proc" class="text-xl font-bold text-blue-600">-</p>
-                                </div>
-                                <div class="bg-white p-3 rounded shadow-sm text-center">
-                                    <p class="text-xs text-gray-500">Conv. Venta</p>
-                                    <p id="kpi-conv" class="text-xl font-bold text-green-600">-</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="h-40">
-                                    <canvas id="chartRadarSkills"></canvas>
-                                </div>
-                                <div class="space-y-2 overflow-y-auto h-40 bg-red-50 p-2 rounded border border-red-100">
-                                    <p class="text-xs font-bold text-red-600 uppercase mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Áreas de Mejora (F=0)</p>
-                                    <ul id="areas-mejora-list" class="text-xs text-gray-700 space-y-1 list-disc pl-4">
-                                        <li class="italic text-gray-400">Esperando datos...</li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-3 gap-2 mt-4">
-                                <div class="h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-300">Img Exterior</div>
-                                <div class="h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-300">Img Interior</div>
-                                <div class="h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 border border-gray-300">Img Gabinete</div>
-                            </div>
-
-                            <div class="mt-4 space-y-2">
-                                <textarea class="w-full text-sm p-2 border rounded resize-none" rows="2" placeholder="Observaciones y Recomendaciones..."></textarea>
-                                <textarea class="w-full text-sm p-2 border rounded resize-none" rows="2" placeholder="Compromisos acordados..."></textarea>
-                            </div>
-
-                            <button class="btn-3d w-full mt-4 bg-brand-primary text-white py-2 rounded font-bold" onclick="alert('Informe Generado y Guardado!')">Generar Informe Completo</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="sec-exclusivos" class="section-view hidden fade-in">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Centros Exclusivos - Monitorización</h2>
-                    <button class="btn-3d bg-brand-success text-white px-3 py-1 rounded text-sm"><i class="fa-solid fa-plus"></i> Añadir Centro</button>
-                </div>
-
-                <div class="glass-panel rounded-xl overflow-hidden mb-6">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-800 text-white text-xs uppercase">
-                            <tr>
-                                <th class="p-3">Centro</th>
-                                <th class="p-3 text-right">Agosto 25</th>
-                                <th class="p-3 text-right">Sept 25</th>
-                                <th class="p-3 text-right">Oct 25</th>
-                                <th class="p-3 text-right">Est. Acum.</th>
-                                <th class="p-3 text-right">Real Acum.</th>
-                                <th class="p-3 text-center">Estado</th>
-                                <th class="p-3">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
-                            <tr class="hover:bg-gray-50">
-                                <td class="p-3 font-medium">AAA NARÓN</td>
-                                <td class="p-3 text-right">12.500 €</td>
-                                <td class="p-3 text-right">13.200 €</td>
-                                <td class="p-3 text-right">11.800 €</td>
-                                <td class="p-3 text-right font-bold text-gray-600">35.000 €</td>
-                                <td class="p-3 text-right font-bold text-green-600">37.500 €</td>
-                                <td class="p-3 text-center"><span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Objetivo</span></td>
-                                <td class="p-3">
-                                    <select class="text-xs border rounded p-1 bg-white">
-                                        <option>Seleccionar...</option>
-                                        <option>Mailing</option>
-                                        <option>Azafata</option>
-                                        <option>Call Center</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-gray-50">
-                                <td class="p-3 font-medium">ZARAGOZA AUGUSTA</td>
-                                <td class="p-3 text-right">8.100 €</td>
-                                <td class="p-3 text-right">7.900 €</td>
-                                <td class="p-3 text-right">8.200 €</td>
-                                <td class="p-3 text-right font-bold text-gray-600">28.000 €</td>
-                                <td class="p-3 text-right font-bold text-red-600">24.200 €</td>
-                                <td class="p-3 text-center"><span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">Desviado</span></td>
-                                <td class="p-3">
-                                    <select class="text-xs border rounded p-1 bg-white">
-                                        <option>Seleccionar...</option>
-                                        <option>Mailing</option>
-                                        <option selected>Call Center</option>
-                                    </select>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="glass-panel p-6 rounded-xl h-64">
-                    <h3 class="font-bold text-gray-700 mb-2">Monitorización Global (Acumulado)</h3>
-                    <div class="relative w-full h-full pb-6">
-                        <canvas id="chartExclusiveGlobal"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <div id="sec-proyectos" class="section-view hidden fade-in">
-                <h2 class="text-2xl font-bold mb-6">Gestión de Proyectos</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-yellow-400">
-                        <div class="flex justify-between mb-4">
-                            <h3 class="font-bold text-lg">Integración CRM</h3>
-                            <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">En Proceso</span>
-                        </div>
-                        <p class="text-sm text-gray-600 mb-4">Unificación de bases de datos de clientes Corner y Exclusivos.</p>
-                        <div class="flex items-center justify-between mt-4 text-xs text-gray-500">
-                            <span>Resp: IT + Audio</span>
-                            <span>Fin: 20 Dic</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2 mt-3"><div class="bg-yellow-400 h-2 rounded-full" style="width: 45%"></div></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="sec-servicio-aar" class="section-view hidden fade-in">
-                <h2 class="text-2xl font-bold mb-6">Servicio AAR - Estado de Formación</h2>
-                <div class="glass-panel rounded-xl overflow-hidden">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th class="p-3 text-left">Centro</th>
-                                <th class="p-3 text-left">Perfil</th>
-                                <th class="p-3 text-center">Estado</th>
-                                <th class="p-3 text-center">Certificado</th>
-                                <th class="p-3 text-center">Procesos</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y">
-                            <tr>
-                                <td class="p-3">4DIA - BARCELONA DIAGONAL</td>
-                                <td class="p-3">Audiólogo</td>
-                                <td class="p-3 text-center"><span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Activo</span></td>
-                                <td class="p-3 text-center text-green-500"><i class="fa-solid fa-check-circle"></i></td>
-                                <td class="p-3 text-center">
-                                    <div class="w-16 h-2 bg-gray-200 rounded-full mx-auto"><div class="bg-blue-500 h-2 rounded-full" style="width: 90%"></div></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="p-3">4AES - NARÓN</td>
-                                <td class="p-3">Técnico</td>
-                                <td class="p-3 text-center"><span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">En Formación</span></td>
-                                <td class="p-3 text-center text-gray-300"><i class="fa-solid fa-circle"></i></td>
-                                <td class="p-3 text-center">
-                                    <div class="w-16 h-2 bg-gray-200 rounded-full mx-auto"><div class="bg-blue-500 h-2 rounded-full" style="width: 40%"></div></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <div id="modal-visit" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-96 transform scale-100 transition-transform">
-            <h3 class="font-bold text-xl mb-4 text-brand-dark">Nueva Visita</h3>
-            <p class="text-sm text-gray-500 mb-2">Fecha: <span id="modal-date-display" class="font-semibold text-brand-primary"></span></p>
-            
-            <label class="block text-xs font-bold text-gray-500 mt-3 mb-1">Seleccionar Centro</label>
-            <select id="modal-center-select" class="w-full border p-2 rounded mb-3 text-sm">
-                </select>
-
-            <label class="block text-xs font-bold text-gray-500 mb-1">Responsable Audio</label>
-            <div class="flex gap-2 mb-6">
-                <button type="button" class="flex-1 py-2 border rounded hover:bg-brand-primary hover:text-white transition text-xs font-bold resp-btn" data-resp="Ariannys Rojas">Ariannys</button>
-                <button type="button" class="flex-1 py-2 border rounded hover:bg-brand-primary hover:text-white transition text-xs font-bold resp-btn" data-resp="Sonia Guasque">Sonia</button>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Cancelar</button>
-                <button onclick="confirmVisit()" class="btn-3d px-4 py-2 bg-brand-success text-white rounded font-bold">Agendar</button>
-            </div>
-        </div>
+<!-- ===========================
+     HEADER SUPERIOR
+     =========================== -->
+<div class="header">
+    <div style="font-size: 18px; font-weight: bold; color: var(--negro);">
+        Plataforma Gestión Audio
     </div>
 
-    <script>
-        // --- DATOS MOCKADOS (Basados en archivos usuario) ---
-        const centersData = [
-            { id: "4DIA", name: "BARCELONA DIAGONAL", prov: "Barcelona", lat: 41.3851, lng: 2.1734, del: "Eneritz Aranguren", color: 1, kpis: { proc: 85, hit: 1, conv: 45 } },
-            { id: "4AES", name: "NARÓN CASTILLA", prov: "Coruña", lat: 43.516, lng: -8.191, del: "Daniel Chazo", color: 3, kpis: { proc: 92, hit: 1, conv: 52 } },
-            { id: "4ADX", name: "AGUILAS", prov: "Murcia", lat: 37.406, lng: -1.581, del: "Manuel Cánovas", color: 4, kpis: { proc: 70, hit: 0, conv: 30 } },
-            { id: "4AXA", name: "CERDANYOLA", prov: "Barcelona", lat: 41.491, lng: 2.140, del: "Laura Plazas", color: 2, kpis: { proc: 60, hit: 1, conv: 35 } },
-            { id: "4ZAU", name: "ZARAGOZA AUGUSTA", prov: "Zaragoza", lat: 41.648, lng: -0.889, del: "Eneritz Aranguren", color: 1, kpis: { proc: 88, hit: 1, conv: 40 } }
-        ];
+    <div>
+        <button onclick="toggleTheme()" 
+            style="background: var(--rojo); color: white; border:none; padding:8px 14px; border-radius:8px; cursor:pointer;">
+            Modo Claro/Oscuro
+        </button>
+    </div>
+</div>
 
-        let currentVisit = null; // Store data of the active visit being edited
+<!-- ===========================
+     CONTENEDOR PRINCIPAL
+     =========================== -->
+<div class="main">
 
-        // --- INICIALIZACIÓN ---
-        document.addEventListener('DOMContentLoaded', () => {
-            initCharts();
-            initMap();
-            generateCalendar();
-            renderRanking();
-            
-            // Setup Resp selection logic
-            document.querySelectorAll('.resp-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.resp-btn').forEach(b => b.classList.remove('bg-brand-primary', 'text-white'));
-                    this.classList.add('bg-brand-primary', 'text-white');
-                    this.setAttribute('data-selected', 'true');
-                });
-            });
-        });
+    <!-- DASHBOARD (Módulo principal) -->
+    <section id="dashboard" style="display:block;">
+        <h1 class="section-title">📊 Dashboard General</h1>
 
-        // --- NAVEGACIÓN ---
-        function showSection(id) {
-            // Ocultar todas
-            document.querySelectorAll('.section-view').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('bg-gray-700'));
-            
-            // Mostrar activa
-            document.getElementById(`sec-${id}`).classList.remove('hidden');
-            event.currentTarget.classList.add('bg-gray-700');
+        <!-- KPIs SUPERIORES -->
+        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+            <div class="kpi-box">
+                <div class="kpi-title">Procesos</div>
+                <div class="kpi-value" id="kpiProcesos">87%</div>
+            </div>
 
-            // Resize map if showing centers (Leaflet bug fix)
-            if(id === 'centros' && window.map) {
-                setTimeout(() => window.map.invalidateSize(), 100);
-            }
-        }
+            <div class="kpi-box">
+                <div class="kpi-title">Formaciones</div>
+                <div class="kpi-value" id="kpiFormaciones">82%</div>
+            </div>
 
-        // --- MAPA LEAFLET ---
-        function initMap() {
-            window.map = L.map('map').setView([40.416, -3.703], 6); // Centro España
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO'
-            }).addTo(window.map);
+            <div class="kpi-box">
+                <div class="kpi-title">Conv. Prueba</div>
+                <div class="kpi-value" id="kpiPrueba">78%</div>
+            </div>
 
-            // Iconos coloreados
-            const getIcon = (colorClass) => {
-                return L.divIcon({
-                    className: `custom-div-icon`,
-                    html: `<div style='background-color: ${getColorHex(colorClass)}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);'></div>`,
-                    iconSize: [12, 12],
-                    iconAnchor: [6, 6]
-                });
-            };
+            <div class="kpi-box">
+                <div class="kpi-title">Conv. Venta</div>
+                <div class="kpi-value" id="kpiVenta">81%</div>
+            </div>
 
-            const getColorHex = (c) => {
-                if(c===1) return '#ef4444'; // Rojo (Eneritz)
-                if(c===2) return '#10b981'; // Verde (Laura)
-                if(c===3) return '#3b82f6'; // Azul (Daniel)
-                return '#f59e0b'; // Amarillo (Manuel)
-            };
+            <div class="kpi-box">
+                <div class="kpi-title">HIT</div>
+                <div class="kpi-value" id="kpiHit">SI</div>
+            </div>
 
-            centersData.forEach(c => {
-                L.marker([c.lat, c.lng], { icon: getIcon(c.color) })
-                 .bindPopup(`<b>${c.name}</b><br>${c.del}`)
-                 .addTo(window.map);
-            });
-        }
+            <div class="kpi-box">
+                <div class="kpi-title">Implantación</div>
+                <div class="kpi-value" id="kpiImplantacion">Completa</div>
+            </div>
+        </div>
 
-        // --- GRÁFICOS CHART.JS ---
-        function initCharts() {
-            // Dash 1: Barras
-            new Chart(document.getElementById('chartDash1'), {
-                type: 'bar',
-                data: {
-                    labels: ['Eneritz', 'Daniel', 'Laura', 'Manuel'],
-                    datasets: [{
-                        label: '% Objetivos',
-                        data: [85, 92, 78, 88],
-                        backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'],
-                        borderRadius: 5
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} } }
-            });
+        <!-- GRÁFICA EVOLUTIVA -->
+        <div class="chart-container">
+            <h3 class="section-title">Evolución Mensual (Ago–Jul)</h3>
+            <canvas id="chartEvolucion"></canvas>
+        </div>
 
-            // Dash 2: Línea
-            new Chart(document.getElementById('chartDash2'), {
-                type: 'line',
-                data: {
-                    labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
-                    datasets: [{
-                        label: 'Pruebas',
-                        data: [120, 145, 132, 160],
-                        borderColor: '#3b82f6',
-                        tension: 0.4,
-                        fill: true,
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-            
-            // Exclusivos Global
-            new Chart(document.getElementById('chartExclusiveGlobal'), {
-                type: 'line',
-                data: {
-                    labels: ['Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-                    datasets: [
-                        { label: 'Real', data: [50, 52, 48, 60, 65], borderColor: '#10b981', tension: 0.1 },
-                        { label: 'Estimado', data: [48, 50, 52, 54, 56], borderColor: '#9ca3af', borderDash: [5,5] }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
+        <!-- ÁREAS DE MEJORA -->
+        <div class="chart-container">
+            <h3 class="section-title">Áreas de Mejora (Top 5)</h3>
+            <canvas id="chartMejora"></canvas>
+        </div>
 
-        // --- LÓGICA DE VISITAS Y EXCEL ---
-        
-        // 1. Calendario
-        function generateCalendar() {
-            const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = '';
-            // Header dias
-            ['L','M','X','J','V','S','D'].forEach(d => {
-                grid.innerHTML += `<div class="font-bold text-gray-400">${d}</div>`;
-            });
-            // Dias mock mes actual (empieza en Miercoles ej)
-            for(let i=0; i<2; i++) grid.innerHTML += `<div></div>`;
-            for(let i=1; i<=30; i++) {
-                // Simular algunas citas
-                let hasVisit = (i === 12 || i === 15 || i === 20);
-                let colorClass = hasVisit ? (i < 20 ? 'bg-green-100 text-green-700 border-green-300' : 'bg-yellow-100 text-yellow-700 border-yellow-300') : 'hover:bg-gray-100';
-                
-                grid.innerHTML += `
-                    <div onclick="clickDay(${i})" class="cursor-pointer border rounded py-1 ${colorClass} transition text-xs relative">
-                        ${i}
-                        ${hasVisit ? '<span class="absolute top-0 right-0 w-2 h-2 rounded-full ' + (i<20?'bg-green-500':'bg-yellow-500') + '"></span>' : ''}
-                    </div>`;
-            }
-        }
-
-        function clickDay(day) {
-            // Abrir modal
-            document.getElementById('modal-visit').classList.remove('hidden');
-            document.getElementById('modal-visit').classList.add('flex');
-            document.getElementById('modal-date-display').innerText = `${day}/12/2025`;
-            
-            // Llenar select
-            const sel = document.getElementById('modal-center-select');
-            sel.innerHTML = '<option>Seleccionar...</option>';
-            centersData.forEach(c => {
-                sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-            });
-        }
-
-        function closeModal() {
-            document.getElementById('modal-visit').classList.add('hidden');
-            document.getElementById('modal-visit').classList.remove('flex');
-        }
-
-        function confirmVisit() {
-            const centerId = document.getElementById('modal-center-select').value;
-            const centerName = document.getElementById('modal-center-select').options[document.getElementById('modal-center-select').selectedIndex].text;
-            
-            // Buscar responsable seleccionado
-            let resp = "Sin Asignar";
-            document.querySelectorAll('.resp-btn').forEach(b => {
-                if(b.classList.contains('bg-brand-primary')) resp = b.getAttribute('data-resp');
-            });
-
-            // Activar UI de Reporte
-            closeModal();
-            startReport(centerName, resp);
-        }
-
-        function startReport(centerName, resp) {
-            document.getElementById('report-header').classList.remove('opacity-50', 'pointer-events-none');
-            document.getElementById('visit-center-name').innerText = centerName;
-            document.getElementById('visit-resp').innerText = resp;
-            document.getElementById('visit-date').innerText = new Date().toLocaleDateString();
-            document.getElementById('status-badge').className = "px-3 py-1 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold";
-            document.getElementById('status-badge').innerText = "En Curso";
-            
-            document.getElementById('report-body').classList.remove('hidden');
-        }
-
-        // 2. LECTURA EXCEL (LA PARTE CLAVE)
-        function handleFileUpload(input) {
-            const file = input.files[0];
-            if(!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                
-                // Asumimos primera hoja o buscamos por nombre
-                const sheetName = workbook.SheetNames[0]; 
-                const worksheet = workbook.Sheets[sheetName];
-
-                // Lógica Corner vs Exclusivo
-                // Detectamos por nombre archivo o seleccion usuario. Usamos seleccion usuario para simplificar logica aqui
-                const type = document.getElementById('center-type-select').value;
-                
-                let kpiProc, kpiHit, kpiConv, kpiConvVenta;
-
-                // Definiciones de celdas dadas por usuario
-                if (type === 'corner') {
-                    // Corner: Proc=F90, HIT=F63, ConvP=B92, ConvV=B93
-                    // Nota: XLSX usa "F90" directamente
-                    kpiProc = getCellValue(worksheet, 'F90');
-                    kpiHit = getCellValue(worksheet, 'F63');
-                    kpiConv = getCellValue(worksheet, 'B93'); // Venta
-                } else {
-                    // Exclusivo: Proc=F104, HIT=F65, ConvV=I127
-                    kpiProc = getCellValue(worksheet, 'F104');
-                    kpiHit = getCellValue(worksheet, 'F65');
-                    kpiConv = getCellValue(worksheet, 'I127');
-                }
-
-                // Renderizar datos en Dashboard Visita
-                animateValue('kpi-proc', kpiProc * 100, "%"); // Asumiendo que es decimal 0.85
-                animateValue('kpi-hit', kpiHit, "");
-                animateValue('kpi-conv', kpiConv * 100, "%");
-
-                // Buscar Areas de Mejora (F=0)
-                // Escaneamos columna F en un rango razonable (ej. fila 10 a 150)
-                const issues = [];
-                for(let r=10; r<150; r++) {
-                    const cellVal = getCellValue(worksheet, 'F'+r);
-                    const labelVal = getCellValue(worksheet, 'B'+r); // Asumimos descripcion en B
-                    
-                    if(cellVal === 0 && labelVal && labelVal.length > 5) {
-                        issues.push(labelVal);
-                    }
-                }
-                
-                const list = document.getElementById('areas-mejora-list');
-                list.innerHTML = "";
-                if(issues.length > 0) {
-                    issues.slice(0, 5).forEach(iss => list.innerHTML += `<li>${iss}</li>`); // Mostrar top 5
-                    if(issues.length > 5) list.innerHTML += `<li class="text-gray-400">+ ${issues.length - 5} más...</li>`;
-                } else {
-                    list.innerHTML = `<li class="text-green-500">Todo Correcto!</li>`;
-                }
-
-                // Renderizar Grafico Radar
-                renderRadar([kpiProc*100, Math.random()*100, Math.random()*100, kpiConv*100, 80]);
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function getCellValue(sheet, address) {
-            const cell = sheet[address];
-            return (cell ? cell.v : 0);
-        }
-
-        function animateValue(id, end, suffix) {
-            const obj = document.getElementById(id);
-            let start = 0;
-            if (end === 0) { obj.innerHTML = "0" + suffix; return; }
-            let duration = 1000;
-            let startTime = null;
-
-            function step(timestamp) {
-                if (!startTime) startTime = timestamp;
-                let progress = Math.min((timestamp - startTime) / duration, 1);
-                obj.innerHTML = Math.floor(progress * end) + suffix;
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                }
-            }
-            window.requestAnimationFrame(step);
-        }
-
-        function renderRadar(dataPoints) {
-            const ctx = document.getElementById('chartRadarSkills');
-            if(window.radarChart) window.radarChart.destroy(); // Destruir previo si existe
-
-            window.radarChart = new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: ['Procesos', 'Orden', 'Anamnesis', 'Cierre', 'Post-Venta'],
-                    datasets: [{
-                        label: 'Evaluación',
-                        data: dataPoints,
-                        fill: true,
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderColor: 'rgb(59, 130, 246)',
-                        pointBackgroundColor: 'rgb(59, 130, 246)',
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { r: { min: 0, max: 100, ticks: { display: false } } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function clearReport() {
-            document.getElementById('kpi-proc').innerText = "-";
-            document.getElementById('kpi-hit').innerText = "-";
-            document.getElementById('kpi-conv').innerText = "-";
-            document.getElementById('areas-mejora-list').innerHTML = '<li class="italic text-gray-400">Esperando datos...</li>';
-            if(window.radarChart) window.radarChart.destroy();
-            document.getElementById('excel-upload').value = "";
-        }
-
-        // --- EXPORTAR HTML ---
-        function downloadHTML() {
-            const htmlContent = document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ControlCenterAudio_Guardado.html';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-
-        // --- RANKING TABLE FILL ---
-        function renderRanking() {
-            const tbody = document.getElementById('rankingTableBody');
-            centersData.sort((a,b) => b.kpis.conv - a.kpis.conv).forEach(c => {
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-2 py-2 font-medium truncate" title="${c.name}">${c.name.substring(0,15)}...</td>
-                        <td class="px-2 py-2 text-xs text-gray-500">${c.del.split(' ')[0]}</td>
-                        <td class="px-2 py-2 text-right font-bold ${c.kpis.conv > 40 ? 'text-green-600':'text-yellow-600'}">${c.kpis.conv}%</td>
-                        <td class="px-2 py-2 text-center">${c.kpis.hit ? '<i class="fa-solid fa-check text-green-500"></i>' : '<i class="fa-solid fa-x text-red-300"></i>'}</td>
+        <!-- RANKING -->
+        <div class="chart-container">
+            <h3 class="section-title">Ranking KPI</h3>
+            <table id="tablaRanking" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#eee;">
+                        <th>Centro</th>
+                        <th>Delegado</th>
+                        <th>Procesos</th>
+                        <th>Formación</th>
+                        <th>Conv. Prueba</th>
+                        <th>Conv. Venta</th>
                     </tr>
-                `;
-            });
-        }
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Pamplona</td>
+                        <td>Eneritz</td>
+                        <td>92%</td>
+                        <td>85%</td>
+                        <td>81%</td>
+                        <td>83%</td>
+                    </tr>
+                    <tr>
+                        <td>Delicias</td>
+                        <td>Blanca</td>
+                        <td>89%</td>
+                        <td>82%</td>
+                        <td>78%</td>
+                        <td>80%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-    </script>
+    <!-- MÓDULO CENTROS -->
+    <section id="centros" style="display:none;">
+        <h1 class="section-title">📍 Centros</h1>
+        <p>Aquí irá el módulo de Centros completo.</p>
+    </section>
+
+    <!-- MÓDULO VISITAS -->
+    <section id="visitas" style="display:none;">
+        <h1 class="section-title">📅 Visitas</h1>
+        <p>Calendario y edición de visitas.</p>
+    </section>
+
+    <!-- MÓDULO EXCLUSIVOS -->
+    <section id="exclusivos" style="display:none;">
+        <h1 class="section-title">⭐ Centros Exclusivos</h1>
+        <p>Acciones exclusivas, KPIs y checklist.</p>
+    </section>
+
+    <!-- MÓDULO AAR -->
+    <section id="aar" style="display:none;">
+        <h1 class="section-title">🎧 Servicio AAR</h1>
+        <p>Formación, perfiles y estado AAR.</p>
+    </section>
+
+    <!-- MÓDULO PROYECTOS -->
+    <section id="proyectos" style="display:none;">
+        <h1 class="section-title">📂 Proyectos</h1>
+        <p>Módulo de proyectos.</p>
+    </section>
+
+</div>
+<!-- ===========================
+     SCRIPTS DE NAVEGACIÓN
+     =========================== -->
+<script>
+function showPage(pageName) {
+    const pages = ["dashboard", "centros", "visitas", "exclusivos", "aar", "proyectos"];
+
+    pages.forEach(p => {
+        document.getElementById(p).style.display = (p === pageName ? "block" : "none");
+    });
+
+    // Actualiza estado activo en el sidebar
+    const links = document.querySelectorAll(".sidebar a");
+    links.forEach(link => link.classList.remove("active"));
+
+    event.target.classList.add("active");
+}
+
+/* ===========================
+   TEMA CLARO / OSCURO
+   =========================== */
+let darkMode = false;
+
+function toggleTheme() {
+    darkMode = !darkMode;
+
+    if (darkMode) {
+        document.body.style.background = "#1a1a1a";
+        document.querySelector(".header").style.background = "#333";
+        document.querySelector(".header").style.color = "white";
+        document.querySelectorAll(".kpi-box").forEach(b => b.style.background = "#2a2a2a");
+        document.querySelectorAll(".chart-container").forEach(c => c.style.background = "#2a2a2a");
+    } else {
+        document.body.style.background = "#f4f4f4";
+        document.querySelector(".header").style.background = "white";
+        document.querySelector(".header").style.color = "black";
+        document.querySelectorAll(".kpi-box").forEach(b => b.style.background = "white");
+        document.querySelectorAll(".chart-container").forEach(c => c.style.background = "white");
+    }
+}
+</script>
+<!-- ===========================
+     DASHBOARD — GRÁFICAS
+     =========================== -->
+<script>
+/* ===========================
+   GRÁFICA EVOLUCIÓN MENSUAL
+   =========================== */
+const ctxEvo = document.getElementById("chartEvolucion");
+
+new Chart(ctxEvo, {
+    type: "line",
+    data: {
+        labels: ["Ago", "Sep", "Oct", "Nov", "Dic", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul"],
+        datasets: [
+            {
+                label: "Procesos",
+                data: [80, 82, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93],
+                borderColor: "#E60000",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Formaciones",
+                data: [70, 72, 73, 74, 76, 77, 78, 79, 80, 81, 82, 83],
+                borderColor: "#ff7b00",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Conv. Prueba",
+                data: [68, 70, 72, 73, 75, 76, 77, 78, 79, 80, 80, 81],
+                borderColor: "#0099ff",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Conv. Venta",
+                data: [67, 69, 70, 72, 73, 75, 77, 78, 79, 80, 80, 82],
+                borderColor: "#00c853",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Áreas de Mejora (Top 5)",
+                data: [35, 33, 32, 30, 29, 27, 25, 24, 23, 22, 21, 20],
+                borderColor: "#555",
+                borderWidth: 3,
+                borderDash: [5, 5],
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#000" } } },
+        scales: {
+            x: { ticks: { color: "#000" } },
+            y: { ticks: { color: "#000", suggestedMin: 0, suggestedMax: 100 } }
+        }
+    }
+});
+
+
+/* ===========================
+   GRÁFICA ÁREAS DE MEJORA
+   =========================== */
+const ctxMej = document.getElementById("chartMejora");
+
+new Chart(ctxMej, {
+    type: "line",
+    data: {
+        labels: ["Ago", "Sep", "Oct", "Nov", "Dic", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul"],
+        datasets: [
+            {
+                label: "Videotoscopia",
+                data: [10, 9, 9, 8, 8, 7, 7, 6, 6, 6, 5, 5],
+                borderColor: "#E60000",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Anamnesis",
+                data: [8, 8, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4],
+                borderColor: "#ff7b00",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Logoaudiometría",
+                data: [7, 7, 6, 6, 5, 5, 5, 4, 4, 4, 3, 3],
+                borderColor: "#0099ff",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Explicar HIT",
+                data: [9, 8, 8, 7, 7, 6, 6, 6, 5, 5, 4, 4],
+                borderColor: "#00c853",
+                borderWidth: 3,
+                tension: 0.3
+            },
+            {
+                label: "Agenda Inteligente",
+                data: [11, 10, 10, 9, 9, 8, 8, 7, 7, 6, 6, 6],
+                borderColor: "#555",
+                borderWidth: 3,
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#000" } } },
+        scales: {
+            x: { ticks: { color: "#000" } },
+            y: { ticks: { color: "#000" } }
+        }
+    }
+});
+</script>
 </body>
 </html>
