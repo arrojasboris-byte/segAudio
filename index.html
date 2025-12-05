@@ -7,27 +7,16 @@
 
   <style>
     :root {
-      --bg-main: radial-gradient(circle at top left, #e5e7eb, #f9fafb 55%);
-      --bg-card: #ffffff;
-      --bg-card-soft: #f3f4f6;
-      --text-main: #020617;
-      --text-muted: #6b7280;
-      --border-soft: #d4d4d8;
-      --shadow-soft: 0 14px 30px rgba(15, 23, 42, 0.18);
-      --accent-red: #ff2440;
-      --accent-blue: #1d4ed8;
-      --accent-green: #16a34a;
-      --accent-orange: #ea580c;
-    }
-
-    body.dark {
-      --bg-main: radial-gradient(circle at top left, #1f2937, #020617 55%);
-      --bg-card: #0b1120;
-      --bg-card-soft: #020617;
+      --bg-main: radial-gradient(circle at top left, #111827, #020617 55%);
+      --bg-card: #020617;
+      --bg-card-soft: #0b1120;
       --text-main: #f9fafb;
       --text-muted: #9ca3af;
       --border-soft: #1f2937;
-      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.65);
+      --accent-red: #ff2440;
+      --accent-blue: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-orange: #f97316;
     }
 
     * {
@@ -53,7 +42,7 @@
     .sidebar {
       width: 250px;
       background: #020617;
-      border-right: 1px solid #111827;
+      border-right: 1px solid #020617;
       padding: 18px 18px 24px;
       display: flex;
       flex-direction: column;
@@ -72,7 +61,6 @@
       height: 34px;
       border-radius: 999px;
       background: radial-gradient(circle at 30% 20%, #fee2e2, var(--accent-red));
-      box-shadow: 0 0 20px rgba(239, 68, 68, 0.75);
     }
 
     .logo-text {
@@ -127,7 +115,6 @@
       font-size: .75rem;
     }
 
-    /* En este módulo, el activo es CENTROS en rojo */
     .nav-item.active {
       background: linear-gradient(90deg, #ff2440, #fb7185);
       color: #111827;
@@ -135,10 +122,10 @@
     }
 
     .nav-item.active span.icon {
-      background: rgba(15,23,42,0.2);
+      background: rgba(15,23,42,.2);
     }
 
-    .nav-item:hover:not(.active) {
+    .nav-item:hover:not(.active)) {
       background: rgba(31,41,55,0.9);
       color: #e5e7eb;
     }
@@ -162,70 +149,33 @@
 
     .topbar {
       display: flex;
-      align-items: center;
+      justify-content: flex-end;
       gap: 10px;
-    }
-
-    .search-input-wrapper {
-      flex: 1;
-      position: relative;
-    }
-
-    .search-input {
-      width: 100%;
-      background: #ffffff;
-      border-radius: 999px;
-      padding: 8px 12px 8px 32px;
-      border: 1px solid var(--border-soft);
-      color: var(--text-main);
-      font-size: .86rem;
-      outline: none;
-    }
-
-    body.dark .search-input {
-      background: #020617;
-      border-color: #1f2937;
-      color: #e5e7eb;
-    }
-
-    .search-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .search-icon {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: .8rem;
-      color: var(--text-muted);
+      margin-bottom: 4px;
     }
 
     .btn {
       border-radius: 999px;
-      padding: 7px 12px;
-      border: 1px solid transparent;
+      padding: 6px 12px;
+      border: 1px solid var(--border-soft);
       font-size: .8rem;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: #e5e7eb;
-      color: #111827;
-      white-space: nowrap;
-    }
-
-    body.dark .btn {
       background: #020617;
-      border-color: #1f2937;
       color: #e5e7eb;
+      white-space: nowrap;
+      /* SIN SOMBRAS */
+      box-shadow: none;
     }
 
     .btn-cta {
-      background: linear-gradient(90deg, var(--accent-red), #fb7185);
+      background: linear-gradient(90deg, #ff2440, #fb7185);
       color: #111827;
       font-weight: 600;
-      box-shadow: 0 10px 24px rgba(248, 113, 113, 0.6);
+      box-shadow: none;
+      border-color: transparent;
     }
 
     .btn span.icon {
@@ -237,54 +187,52 @@
       justify-content: center;
     }
 
-    /* Buscador principal Centros */
+    /* BUSCADOR CENTROS */
     .centros-search-row {
-      margin-top: 6px;
-    }
-
-    .centros-search-input {
-      width: 100%;
-      background: var(--bg-card);
-      border-radius: 999px;
-      padding: 9px 12px 9px 32px;
-      border: 1px solid var(--border-soft);
-      color: var(--text-main);
-      font-size: .86rem;
-      outline: none;
-    }
-
-    body.dark .centros-search-input {
-      background: #020617;
-      border-color: #1f2937;
-      color: #e5e7eb;
-    }
-
-    .centros-search-input::placeholder {
-      color: var(--text-muted);
+      margin-top: 2px;
     }
 
     .centros-search-wrapper {
       position: relative;
     }
 
-    .centros-search-wrapper .search-icon {
-      left: 10px;
+    .centros-search-input {
+      width: 100%;
+      background: #020617;
+      border-radius: 999px;
+      padding: 8px 12px 8px 32px;
+      border: 1px solid var(--border-soft);
+      color: var(--text-main);
+      font-size: .86rem;
+      outline: none;
+    }
+
+    .centros-search-input::placeholder {
       color: var(--text-muted);
     }
 
+    .centros-search-wrapper .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: .8rem;
+      color: var(--text-muted);
+    }
+
+    /* BLOQUE SUPERIOR: MAPA + DELEGADOS */
     .top-layout {
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 8px;
+      grid-template-columns: 1.7fr 1fr; /* más ancho para mapa */
+      gap: 10px;
       min-height: 180px;
     }
 
     .card {
       background: var(--bg-card);
       border-radius: 14px;
-      padding: 10px 10px 8px;
+      padding: 10px;
       border: 1px solid var(--border-soft);
-      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
       min-width: 0;
@@ -301,110 +249,107 @@
       margin-bottom: 6px;
     }
 
-    /* Mapa estático */
+    /* MAPA */
     .map-container {
       flex: 1;
-      position: relative;
-      background: #111827;
-      border-radius: 12px;
-      padding: 8px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
-    .map-title-row {
+    .map-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: #e5e7eb;
       font-size: .8rem;
+    }
+
+    .badge-small {
+      font-size: .7rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #111827;
+      color: var(--text-muted);
+      border: 1px solid var(--border-soft);
     }
 
     .map-body {
       flex: 1;
-      position: relative;
-      border-radius: 10px;
-      background: radial-gradient(circle at 30% 20%, #4b5563, #020617);
-      overflow: hidden;
+      background: #020617;
+      border-radius: 12px;
+      padding: 6px;
     }
 
-    .spain-label {
-      position: absolute;
-      bottom: 6px;
-      right: 10px;
-      font-size: .7rem;
-      color: #e5e7eb;
-      opacity: .7;
+    svg#spainMap {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .spain-shape {
+      fill: #4b5563;
+      stroke: #111827;
+      stroke-width: 1.2;
+      cursor: pointer;
     }
 
     .map-dot {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
+      stroke: #020617;
+      stroke-width: 1;
       cursor: pointer;
-      border: 1px solid rgba(15,23,42,0.8);
     }
 
-    .map-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-top: 6px;
-    }
-
-    .map-legend-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
+    .map-footer {
       font-size: .7rem;
-      color: #e5e7eb;
+      color: var(--text-muted);
+      text-align: right;
     }
 
-    .map-legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-    }
-
-    /* Panel derecho: Añadir centro */
-    .add-center-panel {
+    /* PANEL DERECHA: DELEGADOS Y ACCIONES */
+    .delegados-panel {
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
-    .add-center-panel-top {
+    .delegados-list {
       display: flex;
-      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      font-size: .76rem;
+    }
+
+    .delegado-pill {
+      display: inline-flex;
       align-items: center;
+      gap: 4px;
     }
 
-    .add-center-panel-top h3 {
-      font-size: .9rem;
-    }
-
-    .add-center-text {
-      font-size: .75rem;
-      color: var(--text-muted);
-    }
-
-    .badge-type {
+    .delegado-color {
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
-      padding: 2px 6px;
-      font-size: .7rem;
-      background: rgba(37,99,235,0.09);
-      color: #1d4ed8;
     }
 
-    /* Tabla tipo Excel */
+    .actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .summary-text {
+      font-size: .74rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* TABLA */
     .table-wrapper {
       flex: 1;
       background: var(--bg-card);
       border-radius: 14px;
       border: 1px solid var(--border-soft);
-      box-shadow: var(--shadow-soft);
       display: flex;
       flex-direction: column;
       min-height: 0;
@@ -441,13 +386,13 @@
     thead {
       position: sticky;
       top: 0;
-      background: var(--bg-card);
+      background: #020617;
       z-index: 2;
     }
 
     th, td {
       padding: 6px 8px;
-      border-bottom: 1px solid var(--bg-card-soft);
+      border-bottom: 1px solid #0b1120;
       text-align: left;
       white-space: nowrap;
     }
@@ -459,15 +404,11 @@
     }
 
     tbody tr:nth-child(even) {
-      background: var(--bg-card-soft);
+      background: #020617;
     }
 
     tbody tr:hover {
-      background: rgba(2,6,23,0.06);
-    }
-
-    body.dark tbody tr:nth-child(even) {
-      background: #020617;
+      background: rgba(15,23,42,0.9);
     }
 
     .tag {
@@ -475,35 +416,35 @@
       padding: 2px 6px;
       font-size: .7rem;
       border: 1px solid var(--border-soft);
-      background: var(--bg-card-soft);
+      background: #0b1120;
     }
 
     .tag.exclusivo {
-      background: rgba(22,163,74,0.12);
+      background: rgba(22,163,74,0.15);
       color: var(--accent-green);
-      border-color: rgba(22,163,74,0.6);
+      border-color: rgba(22,163,74,0.7);
     }
 
     .tag.corner {
-      background: rgba(37,99,235,0.12);
+      background: rgba(37,99,235,0.15);
       color: var(--accent-blue);
-      border-color: rgba(37,99,235,0.6);
+      border-color: rgba(37,99,235,0.7);
     }
 
     .tag-aar {
-      background: rgba(148,163,184,0.12);
+      background: rgba(148,163,184,0.15);
       border-color: rgba(148,163,184,0.7);
       color: var(--text-muted);
     }
 
     .tag-aar.si {
-      background: rgba(34,197,94,0.12);
+      background: rgba(34,197,94,0.15);
       border-color: rgba(34,197,94,0.7);
       color: var(--accent-green);
     }
 
     .tag-aar.formacion {
-      background: rgba(234,179,8,0.12);
+      background: rgba(234,179,8,0.15);
       border-color: rgba(234,179,8,0.7);
       color: #eab308;
     }
@@ -517,11 +458,11 @@
       text-decoration: underline;
     }
 
-    /* Modal añadir centro / ver informes */
+    /* MODALES */
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(15,23,42,0.65);
+      background: rgba(15,23,42,0.75);
       display: none;
       align-items: center;
       justify-content: center;
@@ -529,13 +470,12 @@
     }
 
     .modal {
-      background: var(--bg-card);
+      background: #020617;
       border-radius: 14px;
       padding: 14px;
       width: 420px;
       max-width: 95%;
       border: 1px solid var(--border-soft);
-      box-shadow: var(--shadow-soft);
     }
 
     .modal-header {
@@ -578,17 +518,10 @@
       padding: 5px 7px;
       border-radius: 8px;
       border: 1px solid var(--border-soft);
-      background: var(--bg-card-soft);
+      background: #0b1120;
       color: var(--text-main);
       font-size: .78rem;
       outline: none;
-    }
-
-    body.dark .modal-field input,
-    body.dark .modal-field select {
-      background: #020617;
-      border-color: #1f2937;
-      color: #e5e7eb;
     }
 
     .modal-footer {
@@ -597,19 +530,12 @@
       gap: 8px;
       margin-top: 10px;
     }
-
-    .badge-small {
-      font-size: .7rem;
-      padding: 2px 5px;
-      border-radius: 999px;
-      background: rgba(148,163,184,0.15);
-      color: var(--text-muted);
-    }
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Librería para leer Excel en el navegador -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
-<body class="dark">
+<body>
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="logo">
@@ -645,18 +571,14 @@
     </div>
 
     <div class="sidebar-footer">
-      <p>Versión demo · Datos ficticios</p>
+      Versión demo · Datos ficticios
     </div>
   </aside>
 
   <!-- MAIN -->
   <main class="main">
-    <!-- Topbar -->
+    <!-- Topbar con acciones generales (sin buscador) -->
     <div class="topbar">
-      <div class="search-input-wrapper">
-        <span class="search-icon">🔍</span>
-        <input class="search-input" placeholder="Busca en toda la plataforma..." />
-      </div>
       <button class="btn" id="themeToggle">
         <span class="icon">🌓</span> Oscuro / Claro
       </button>
@@ -671,7 +593,7 @@
       </button>
     </div>
 
-    <!-- Buscador Centros -->
+    <!-- Buscador local de centros -->
     <div class="centros-search-row">
       <div class="centros-search-wrapper">
         <span class="search-icon">🔍</span>
@@ -680,89 +602,59 @@
       </div>
     </div>
 
-    <!-- Mapa + panel Añadir centro -->
+    <!-- MAPA + PANEL DELEGADOS -->
     <section class="top-layout">
-      <!-- Mapa fijo España -->
-      <article class="card">
-        <div class="map-container">
-          <div class="map-title-row">
-            <span>Mapa de delegados (estático)</span>
-            <span class="badge-small">Clic en un punto para filtrar</span>
-          </div>
-          <div class="map-body" id="mapSpain">
-            <!-- Puntos estáticos aproximados por zona (sin zoom) -->
-            <!-- Norte (Eneritz / Sonia / Sergio / Daniel / etc.) -->
-            <div class="map-dot" data-delegado="Eneritz Aranguren"
-                 style="top: 20%; left: 50%; background:#22c55e;"></div>
-            <div class="map-dot" data-delegado="Sonia Godino"
-                 style="top: 17%; left: 45%; background:#22d3ee;"></div>
-            <div class="map-dot" data-delegado="Sergio Perán"
-                 style="top: 25%; left: 40%; background:#fb7185;"></div>
-            <div class="map-dot" data-delegado="Daniel Chazo"
-                 style="top: 30%; left: 35%; background:#a855f7;"></div>
-
-            <!-- Cataluña / Aragón / Levante -->
-            <div class="map-dot" data-delegado="Laura Plazas"
-                 style="top: 32%; left: 60%; background:#2563eb;"></div>
-            <div class="map-dot" data-delegado="Cecilia Pérez"
-                 style="top: 40%; left: 58%; background:#0ea5e9;"></div>
-
-            <!-- Centro -->
-            <div class="map-dot" data-delegado="Marisa Carmona"
-                 style="top: 40%; left: 42%; background:#eab308;"></div>
-            <div class="map-dot" data-delegado="Laura Ramos"
-                 style="top: 43%; left: 44%; background:#14b8a6;"></div>
-            <div class="map-dot" data-delegado="Blanca Fdez. de la Pradilla"
-                 style="top: 38%; left: 46%; background:#ec4899;"></div>
-
-            <!-- Sur / Andalucía / Extremadura -->
-            <div class="map-dot" data-delegado="Martin Sebastián"
-                 style="top: 55%; left: 40%; background:#ef4444;"></div>
-            <div class="map-dot" data-delegado="Maribel Amezcua"
-                 style="top: 52%; left: 35%; background:#facc15;"></div>
-
-            <!-- Islas / otros puntos aproximados -->
-            <div class="map-dot" data-delegado="Cecilia Pérez"
-                 style="top: 72%; left: 48%; background:#0ea5e9;"></div>
-
-            <span class="spain-label">España · Mapa estático</span>
-          </div>
-
-          <div class="map-legend" id="mapLegend"></div>
+      <!-- IZQUIERDA: MAPA ESPAÑA -->
+      <article class="card map-container">
+        <div class="map-header">
+          <span>Mapa de delegados (estático)</span>
+          <span class="badge-small">Clic en un punto para filtrar · clic en fondo para ver todos</span>
+        </div>
+        <div class="map-body">
+          <svg id="spainMap" viewBox="0 0 300 200">
+            <!-- Silueta simple de España -->
+            <path id="spainShape" class="spain-shape"
+                  d="M40 70 L80 40 L140 30 L190 40 L240 60 L255 90 L245 125 L220 150 L170 165 L120 160 L80 150 L55 130 L40 100 Z" />
+          </svg>
+        </div>
+        <div class="map-footer">
+          España · Mapa estático de referencia
         </div>
       </article>
 
-      <!-- Panel derecho: Añadir centro -->
-      <article class="card add-center-panel">
-        <div class="add-center-panel-top">
-          <div>
-            <h3>Gestión de centros</h3>
-            <p class="add-center-text">
-              Alta de nuevos centros, revisión de delegados y estado AAR.
-            </p>
-          </div>
+      <!-- DERECHA: DELEGADOS Y ACCIONES -->
+      <article class="card delegados-panel">
+        <div>
+          <h3>Delegados y acciones</h3>
+          <p class="card-sub">
+            Leyenda de delegados, filtro rápido y carga masiva de centros desde Excel.
+          </p>
+        </div>
+
+        <div class="delegados-list" id="delegadosLegend"></div>
+
+        <div class="actions-row">
           <button class="btn btn-cta" id="btnAddCentro">
             <span class="icon">➕</span> Añadir centro
           </button>
+          <button class="btn" id="btnAdjuntarExcel">
+            <span class="icon">📤</span> Adjuntar centros (Excel)
+          </button>
+          <input type="file" id="inputExcel" accept=".xlsx,.xls" style="display:none" />
         </div>
-        <div style="margin-top:6px;">
-          <span class="badge-type">Corner</span>
-          <span style="margin-left:6px;" class="badge-type"
-                >Exclusivo (alto potencial)</span>
-        </div>
-        <p class="add-center-text" style="margin-top:8px;">
-          Desde aquí podrás adjuntar informes a cada centro (puede haber varios por
-          centro) y consultar en un clic qué informes tiene asociados.
+
+        <p class="summary-text" id="summaryCentros">
+          Centros mostrados: 0 / 0
         </p>
       </article>
     </section>
 
-    <!-- Tabla tipo Excel -->
+    <!-- TABLA CENTROS -->
     <section class="table-wrapper">
       <div class="table-header">
         <div>
           <h3>Listado de centros</h3>
-          <span>Vista consolidada de centros Corner y Exclusivos · datos procedentes del Excel maestro.</span>
+          <span>Vista consolidada de centros Corner y Exclusivos · fuente: Excel maestro.</span>
         </div>
         <span class="badge-small" id="totalCentrosLabel"></span>
       </div>
@@ -786,7 +678,7 @@
     </section>
   </main>
 
-  <!-- Modal Añadir centro -->
+  <!-- MODAL NUEVO CENTRO -->
   <div class="modal-backdrop" id="modalCentro">
     <div class="modal">
       <div class="modal-header">
@@ -829,16 +721,14 @@
     </div>
   </div>
 
-  <!-- Modal ver informes -->
+  <!-- MODAL INFORMES -->
   <div class="modal-backdrop" id="modalInformes">
     <div class="modal">
       <div class="modal-header">
         <h3>Informes del centro</h3>
         <span class="modal-close" data-close="modalInformes">✕</span>
       </div>
-      <div class="modal-body" id="informesBody">
-        <!-- listado dinámico -->
-      </div>
+      <div class="modal-body" id="informesBody"></div>
       <div class="modal-footer">
         <button class="btn" data-close="modalInformes">Cerrar</button>
       </div>
@@ -846,16 +736,16 @@
   </div>
 
   <script>
-    // ----- MODO OSCURO / CLARO -----
+    // ---- TEMA OSCURO/CLARO (simple toggle de clase) ----
     document.getElementById('themeToggle').addEventListener('click', () => {
-      document.body.classList.toggle('dark');
+      document.body.classList.toggle('light');
     });
 
-    // ----- DELEGADOS Y COLORES (coherentes con dashboard) -----
+    // ---- COLORES DELEGADOS (coherentes con dashboard; distinguiendo Laura Ramos / Plazas) ----
     const delegadosColores = {
-      "Eneritz ARANGUREN": "#22c55e",
-      "Laura PLAZAS": "#2563eb",
-      "Laura RAMOS": "#14b8a6",
+      "ENERITZ ARANGUREN": "#22c55e",
+      "LAURA PLAZAS": "#2563eb",
+      "LAURA RAMOS": "#14b8a6",
       "Daniel Chazo": "#a855f7",
       "Manuel Cánovas": "#f97316",
       "Cecilia Pérez": "#0ea5e9",
@@ -868,29 +758,8 @@
       "Sergio Perán": "#fb7185"
     };
 
-    // ----- CENTROS (muestra representativa construida a partir del Excel) -----
-    // NOTA: aquí he cargado algunos como ejemplo. Puedes extender este array con todos los del Excel.
-    const centros = [
-      { codigo:"4DIA", propietario:"AAO", centro:"AVENIDA DIAGONAL", provincia:"BARCELONA", delegado:"ENERITZ ARANGUREN" },
-      { codigo:"4AXA", propietario:"VADILLO Pedro", centro:"CERDANYOLA", provincia:"BARCELONA", delegado:"LAURA PLAZAS" },
-      { codigo:"4AES", propietario:"FRAGUELA Jacobo", centro:"AAA NARÓN", provincia:"Galicia", delegado:"Daniel Chazo" },
-      { codigo:"4ADX", propietario:"LOPEZ Jose", centro:"AGUILAS", provincia:"MURCIA", delegado:"Manuel Cánovas" },
-      { codigo:"4ARK", propietario:"BELLOT Sonia", centro:"ALAIN AFFLELOU OPTICO CARLET", provincia:"VALENCIA", delegado:"Cecilia Pérez" },
-      { codigo:"4AQU", propietario:"RUIZ Alberto", centro:"ALCOBENDAS CONSTITUCION", provincia:"MADRID", delegado:"LAURA RAMOS" },
-      { codigo:"4AKI", propietario:"PIEDRAFITA Rocio", centro:"CC LOS VALLES", provincia:"MADRID", delegado:"Blanca Fdez. de la Pradilla" },
-      { codigo:"4MLG", propietario:"AAO", centro:"FUENLABRADA Calle Leganes", provincia:"MADRID", delegado:"Marisa Carmona" },
-      { codigo:"4ABB", propietario:"MAZA Oriol", centro:"PAMPLONA C. Exclusivo", provincia:"NAVARRA", delegado:"Sonia Godino" },
-      { codigo:"4AFH", propietario:"MAZA Oriol", centro:"PAMPLONA Calle Sancho el Mayor", provincia:"NAVARRA", delegado:"Sonia Godino" },
-      { codigo:"4AWQ", propietario:"MAZA Oriol", centro:"PAMPLONA Carlos III", provincia:"NAVARRA", delegado:"Sonia Godino" },
-      { codigo:"4MRM", propietario:"AAO", centro:"REINA DE MERCEDES", provincia:"Madrid", delegado:"Sergio Perán" },
-      { codigo:"4PEC", propietario:"AAO", centro:"SANTANDER CC PEÑACASTILLO", provincia:"Santander", delegado:"Sergio Perán" },
-      { codigo:"4AXF", propietario:"URRUTIA Esteban", centro:"SANTIAGO DE COMPOSTELA RUA DA ROSA", provincia:"Santiago de Compostela", delegado:"Daniel Chazo" },
-      { codigo:"4TOL", propietario:"AAO", centro:"TORRELAVEGA CARREFOUR CC", provincia:"Santander", delegado:"Sergio Perán" },
-      { codigo:"4ZDE", propietario:"AAO", centro:"ZARAGOZA CALLE DELICIAS", provincia:"ZARAGOZA", delegado:"ENERITZ ARANGUREN" },
-      // ... aquí puedes seguir pegando todas las filas del Excel si quieres tener el 100% de centros
-    ];
-
-    // Centros exclusivos (los que nos has pasado en el listado de ejemplo)
+    // ---- DATOS ----
+    const centros = [];          // se llenará desde Excel o altas manuales
     const exclusivosNombres = new Set([
       "CC LOS VALLES",
       "FUENLABRADA Calle Leganes",
@@ -904,25 +773,94 @@
       "ZARAGOZA CALLE DELICIAS"
     ]);
 
-    // Informes por centro (demo: varios informes posibles)
-    const informesPorCentro = {
-      "CC LOS VALLES": ["Informe inicial 2024-01", "Seguimiento procesos 2024-06"],
-      "REINA DE MERCEDES": ["Auditoría HIT 2024-Q2"],
-      "PAMPLONA C. Exclusivo": ["Apertura 2023", "Plan de acción 2024"],
-      "SANTANDER CC PEÑACASTILLO": []
+    const informesPorCentro = {};
+    const aarPorCentro = {};
+
+    // ---- UTILIDADES TEXTO/PROVINCIA ----
+    function normaliza(txt) {
+      return (txt || "")
+        .toString()
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    // posiciones aproximadas por provincia en el mapa (viewBox 0..300 x 0..200)
+    const provinciaPos = {
+      "CORUNA": [50, 70],
+      "A CORUÑA": [50, 70],
+      "LUGO": [60, 55],
+      "PONTEVEDRA": [55, 85],
+      "OURENSE": [60, 90],
+      "ASTURIAS": [75, 50],
+      "CANTABRIA": [90, 55],
+      "VIZCAYA": [105, 55],
+      "GIPUZKOA": [115, 55],
+      "NAVARRA": [125, 60],
+      "LA RIOJA": [115, 70],
+      "BURGOS": [100, 70],
+      "LEON": [85, 65],
+      "PALENCIA": [95, 75],
+      "VALLADOLID": [100, 85],
+      "ZAMORA": [90, 90],
+      "SALAMANCA": [85, 100],
+      "SEGOVIA": [110, 90],
+      "SORIA": [120, 85],
+      "MADRID": [120, 100],
+      "TOLEDO": [120, 115],
+      "CUENCA": [135, 115],
+      "GUADALAJARA": [130, 100],
+      "ZARAGOZA": [150, 85],
+      "HUESCA": [150, 70],
+      "TERUEL": [150, 110],
+      "BARCELONA": [190, 75],
+      "TARRAGONA": [190, 95],
+      "LLEIDA": [180, 80],
+      "GIRONA": [195, 65],
+      "CASTELLON": [185, 105],
+      "VALENCIA": [180, 115],
+      "ALICANTE": [175, 130],
+      "MURCIA": [170, 140],
+      "ALBACETE": [150, 130],
+      "CIUDAD REAL": [135, 125],
+      "BADAJOZ": [80, 115],
+      "CACERES": [80, 105],
+      "SEVILLA": [95, 135],
+      "CORDOBA": [105, 120],
+      "HUELVA": [80, 135],
+      "CADIZ": [85, 155],
+      "MALAGA": [110, 150],
+      "GRANADA": [120, 145],
+      "JAEN": [120, 130],
+      "ALMERIA": [135, 150],
+      "SANTANDER": [90, 55],
+      "LAS PALMAS": [230, 170],
+      "TENERIFE": [215, 170],
+      "BALEARES": [225, 110],
+      "MALLORCA": [225, 110],
+      "VALLADOLID PASEO ZORIILLA": [100, 85]
     };
 
-    // Estado AAR (demo)
-    const aarPorCentro = {
-      "REINA DE MERCEDES": "Sí",
-      "PAMPLONA C. Exclusivo": "En formación",
-      "SANTIAGO DE COMPOSTELA RUA DA ROSA": "En formación"
-      // resto quedan como "No"
-    };
+    function getPosFromProvincia(prov) {
+      const p = normaliza(prov);
+      if (provinciaPos[p]) return provinciaPos[p];
+      // fallback: zona centro con pequeño desplazamiento determinista
+      const baseX = 135, baseY = 110;
+      let h = 0;
+      for (let i = 0; i < p.length; i++) h += p.charCodeAt(i);
+      const dx = (h % 40) - 20;   // -20..19
+      const dy = ((h / 3) % 30) - 15;
+      return [baseX + dx, baseY + dy];
+    }
 
-    // ----- RENDER TABLA -----
+    // ---- TABLA ----
     const tablaBody = document.getElementById('tablaCentrosBody');
     const totalCentrosLabel = document.getElementById('totalCentrosLabel');
+    const summaryCentros = document.getElementById('summaryCentros');
+
+    let filtroDelegadoActual = null;
+    let filtroTextoActual = "";
 
     function tipoCentro(nombreCentro) {
       return exclusivosNombres.has(nombreCentro) ? "Exclusivo" : "Corner";
@@ -936,18 +874,19 @@
       return aarPorCentro[nombreCentro] || "No";
     }
 
-    function renderTabla(filtroTexto = "", filtroDelegado = null) {
-      const texto = filtroTexto.toLowerCase();
+    function renderTabla() {
+      const texto = filtroTextoActual.toLowerCase();
       tablaBody.innerHTML = "";
 
-      let datosFiltrados = centros.filter(c => {
+      const filtrados = centros.filter(c => {
         const cad = (c.centro + " " + c.propietario + " " + c.delegado).toLowerCase();
         const pasaTexto = cad.includes(texto);
-        const pasaDelegado = !filtroDelegado || c.delegado.toLowerCase().includes(filtroDelegado.toLowerCase());
+        const pasaDelegado = !filtroDelegadoActual ||
+          c.delegado.toLowerCase().includes(filtroDelegadoActual.toLowerCase());
         return pasaTexto && pasaDelegado;
       });
 
-      datosFiltrados.forEach(c => {
+      filtrados.forEach(c => {
         const tr = document.createElement('tr');
         const t = tipoCentro(c.centro);
         const informes = getInformes(c.centro);
@@ -975,53 +914,88 @@
         tablaBody.appendChild(tr);
       });
 
-      totalCentrosLabel.textContent = `Centros mostrados: ${datosFiltrados.length} / ${centros.length}`;
+      totalCentrosLabel.textContent = `Centros mostrados: ${filtrados.length} / ${centros.length}`;
+      summaryCentros.textContent = `Centros mostrados: ${filtrados.length} · Total cargados desde Excel o altas manuales: ${centros.length}`;
     }
 
-    renderTabla();
+    // ---- MAPA: puntos por centro ----
+    const spainMap = document.getElementById('spainMap');
 
-    // ----- BUSCADOR PRINCIPAL -----
-    document.getElementById('buscadorCentros').addEventListener('input', e => {
-      renderTabla(e.target.value, filtroDelegadoActual);
-    });
+    function clearMapDots() {
+      Array.from(spainMap.querySelectorAll('circle.map-dot')).forEach(c => c.remove());
+    }
 
-    // ----- MAPA: leyenda y filtro por clic en punto -----
-    const mapLegend = document.getElementById('mapLegend');
-    Object.entries(delegadosColores).forEach(([nombre, color]) => {
-      const item = document.createElement('div');
-      item.className = 'map-legend-item';
-      item.innerHTML = `<span class="map-legend-dot" style="background:${color}"></span>${nombre}`;
-      mapLegend.appendChild(item);
-    });
+    function renderMapa() {
+      clearMapDots();
 
-    let filtroDelegadoActual = null;
-
-    document.querySelectorAll('.map-dot').forEach(dot => {
-      dot.addEventListener('click', () => {
-        const del = dot.dataset.delegado;
-        filtroDelegadoActual = del;
-        renderTabla(document.getElementById('buscadorCentros').value, del);
+      centros.forEach(c => {
+        const [x, y] = getPosFromProvincia(c.provincia);
+        const color = delegadosColores[c.delegado] || "#e5e7eb";
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute('class', 'map-dot');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', 4);
+        circle.setAttribute('fill', color);
+        circle.dataset.delegado = c.delegado;
+        circle.addEventListener('click', e => {
+          e.stopPropagation();
+          filtroDelegadoActual = c.delegado;
+          renderTabla();
+        });
+        spainMap.appendChild(circle);
       });
+    }
+
+    // clic en fondo del mapa = reset filtro delegado
+    document.getElementById('spainShape').addEventListener('click', () => {
+      filtroDelegadoActual = null;
+      renderTabla();
     });
 
-    // ----- MODALES -----
+    // ---- LEYENDA DELEGADOS ----
+    const delegadosLegend = document.getElementById('delegadosLegend');
+
+    function renderLeyendaDelegados() {
+      delegadosLegend.innerHTML = "";
+      const usados = new Set(centros.map(c => c.delegado));
+
+      usados.forEach(del => {
+        const color = delegadosColores[del] || "#e5e7eb";
+        const pill = document.createElement('div');
+        pill.className = 'delegado-pill';
+        pill.innerHTML = `<span class="delegado-color" style="background:${color}"></span>${del}`;
+        pill.addEventListener('click', () => {
+          filtroDelegadoActual = del;
+          renderTabla();
+        });
+        delegadosLegend.appendChild(pill);
+      });
+    }
+
+    // ---- BUSCADOR ----
+    document.getElementById('buscadorCentros').addEventListener('input', e => {
+      filtroTextoActual = e.target.value || "";
+      renderTabla();
+    });
+
+    // ---- MODALES ----
     function abrirModal(id) {
       document.getElementById(id).style.display = 'flex';
     }
     function cerrarModal(id) {
       document.getElementById(id).style.display = 'none';
     }
-
     document.querySelectorAll('[data-close]').forEach(el => {
       el.addEventListener('click', () => cerrarModal(el.dataset.close));
     });
 
-    // Añadir centro
+    // ---- ALTA MANUAL DE CENTRO ----
     document.getElementById('btnAddCentro').addEventListener('click', () => {
-      // Rellenar select delegados
       const sel = document.getElementById('nuevoDelegado');
       sel.innerHTML = "";
-      Object.keys(delegadosColores).forEach(nombre => {
+      const nombres = new Set([...Object.keys(delegadosColores), ...centros.map(c => c.delegado)]);
+      nombres.forEach(nombre => {
         const opt = document.createElement('option');
         opt.value = nombre;
         opt.textContent = nombre;
@@ -1042,10 +1016,56 @@
       if (tipo === "Exclusivo") exclusivosNombres.add(nuevo.centro);
       centros.push(nuevo);
       cerrarModal('modalCentro');
-      renderTabla(document.getElementById('buscadorCentros').value, filtroDelegadoActual);
+      renderTabla();
+      renderMapa();
+      renderLeyendaDelegados();
     });
 
-    // Click en botones de informes
+    // ---- ADJUNTAR CENTROS (EXCEL) ----
+    const inputExcel = document.getElementById('inputExcel');
+    document.getElementById('btnAdjuntarExcel').addEventListener('click', () => {
+      inputExcel.click();
+    });
+
+    inputExcel.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        // Esperado: CODIGO | PROPIETARIO | CENTRO | PROVINCIA | DELEGADOS
+        centros.length = 0; // limpiamos
+        rows.slice(1).forEach(row => {
+          if (!row || row.length < 5) return;
+          const [codigo, propietario, centro, provincia, delegado] = row;
+          if (!centro) return;
+          centros.push({
+            codigo: (codigo || "").toString().trim(),
+            propietario: (propietario || "").toString().trim(),
+            centro: (centro || "").toString().trim(),
+            provincia: (provincia || "").toString().trim(),
+            delegado: (delegado || "").toString().trim()
+          });
+        });
+
+        filtroDelegadoActual = null;
+        filtroTextoActual = "";
+        document.getElementById('buscadorCentros').value = "";
+
+        renderTabla();
+        renderMapa();
+        renderLeyendaDelegados();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // ---- INFORMES (solo visualización demo) ----
     document.addEventListener('click', e => {
       if (e.target.matches('.btn-link[data-centro]')) {
         const nombreCentro = e.target.dataset.centro;
@@ -1054,7 +1074,7 @@
         cont.innerHTML = "";
 
         if (!informes.length) {
-          cont.innerHTML = "<p style='font-size:.8rem;'>Este centro aún no tiene informes guardados. Desde el módulo de informes podrás adjuntar documentos PDF, actas de visitas, etc.</p>";
+          cont.innerHTML = "<p style='font-size:.8rem;'>Este centro aún no tiene informes guardados. Desde el módulo de informes podrás adjuntar documentos (visitas, auditorías, etc.).</p>";
         } else {
           informes.forEach((inf, idx) => {
             const div = document.createElement('div');
@@ -1066,6 +1086,26 @@
         abrirModal('modalInformes');
       }
     });
+
+    // ---- DEMO: algunos centros de arranque para que veas el mapa funcionando
+    (function cargaDemoInicial() {
+      const demo = [
+        { codigo:"4ABB", propietario:"MAZA Oriol", centro:"PAMPLONA C. Exclusivo", provincia:"NAVARRA", delegado:"Sonia Godino" },
+        { codigo:"4AFH", propietario:"MAZA Oriol", centro:"PAMPLONA Calle Sancho el Mayor", provincia:"NAVARRA", delegado:"Sonia Godino" },
+        { codigo:"4AWQ", propietario:"MAZA Oriol", centro:"PAMPLONA Carlos III", provincia:"NAVARRA", delegado:"Sonia Godino" },
+        { codigo:"4MRM", propietario:"AAO", centro:"REINA DE MERCEDES", provincia:"Madrid", delegado:"Sergio Perán" },
+        { codigo:"4PEC", propietario:"AAO", centro:"SANTANDER CC PEÑACASTILLO", provincia:"Santander", delegado:"Sergio Perán" },
+        { codigo:"4AXF", propietario:"URRUTIA Esteban", centro:"SANTIAGO DE COMPOSTELA RUA DA ROSA", provincia:"A Coruña", delegado:"Daniel Chazo" },
+        { codigo:"4TOL", propietario:"AAO", centro:"TORRELAVEGA CARREFOUR CC", provincia:"Santander", delegado:"Sergio Perán" },
+        { codigo:"4ZDE", propietario:"AAO", centro:"ZARAGOZA CALLE DELICIAS", provincia:"ZARAGOZA", delegado:"ENERITZ ARANGUREN" },
+        { codigo:"4AKI", propietario:"PIEDRAFITA Rocio", centro:"CC LOS VALLES", provincia:"MADRID", delegado:"Blanca Fdez. de la Pradilla" },
+        { codigo:"4MLG", propietario:"AAO", centro:"FUENLABRADA Calle Leganes", provincia:"MADRID", delegado:"Marisa Carmona" }
+      ];
+      demo.forEach(c => centros.push(c));
+      renderTabla();
+      renderMapa();
+      renderLeyendaDelegados();
+    })();
   </script>
 </body>
 </html>
