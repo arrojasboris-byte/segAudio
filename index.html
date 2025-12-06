@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,27 +7,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- XLSX para Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
       --bg-main: radial-gradient(circle at top left, #111827, #020617 55%);
-      --bg-main-light: #f3f4f6;
       --bg-card: #020617;
-      --bg-card-light: #ffffff;
       --bg-card-soft: #0b1120;
       --text-main: #f9fafb;
-      --text-main-light: #111827;
       --text-muted: #9ca3af;
-      --text-muted-light: #6b7280;
       --border-soft: #1f2937;
-      --border-soft-light: #e5e7eb;
       --accent-red: #ff2440;
       --accent-blue: #38bdf8;
       --accent-green: #22c55e;
       --accent-orange: #f97316;
+      --kpi-blue: #60a5fa;
+      --kpi-purple: #a855f7;
+      --kpi-teal: #22c55e;
+      --kpi-yellow: #eab308;
     }
 
     * {
@@ -39,18 +39,22 @@
     html, body {
       width: 100%;
       height: 100%;
-    }
-
-    body {
-      display: flex;
-      background: var(--bg-main);
-      color: var(--text-main);
       overflow: hidden;
     }
 
+    body {
+      background: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+    }
+
     body.light {
-      background: var(--bg-main-light);
-      color: var(--text-main-light);
+      --bg-main: #f3f4f6;
+      --bg-card: #ffffff;
+      --bg-card-soft: #f9fafb;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --border-soft: #e5e7eb;
     }
 
     /* SIDEBAR */
@@ -64,10 +68,9 @@
       gap: 24px;
       color: #e5e7eb;
     }
-
     body.light .sidebar {
-      background: #111827;
-      border-right-color: #020617;
+      background: #020617; /* faldón siempre oscuro */
+      color: #e5e7eb;
     }
 
     .logo {
@@ -162,24 +165,30 @@
       padding: 10px 18px 12px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       max-height: 100vh;
       overflow: hidden;
     }
 
     .topbar {
       display: flex;
+      justify-content: space-between;
       align-items: center;
       gap: 10px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
-    .search-wrapper {
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-global {
       flex: 1;
       position: relative;
     }
 
-    .search-input {
+    .search-global input {
       width: 100%;
       background: #020617;
       border-radius: 999px;
@@ -190,24 +199,17 @@
       outline: none;
     }
 
-    body.light .search-input {
+    body.light .search-global input {
       background: #ffffff;
-      border-color: var(--border-soft-light);
-      color: var(--text-main-light);
     }
 
-    .search-wrapper .search-icon {
+    .search-global .search-icon {
       position: absolute;
       left: 10px;
       top: 50%;
       transform: translateY(-50%);
       font-size: .8rem;
       color: var(--text-muted);
-    }
-
-    .topbar-actions {
-      display: flex;
-      gap: 10px;
     }
 
     .btn {
@@ -224,9 +226,9 @@
       white-space: nowrap;
       box-shadow: none;
     }
-
-    .btn span.icon {
-      font-size: .85rem;
+    body.light .btn {
+      background: #ffffff;
+      color: #111827;
     }
 
     .btn-cta {
@@ -236,56 +238,29 @@
       border-color: transparent;
     }
 
-    body.light .btn {
-      background: #ffffff;
-      color: #111827;
-      border-color: var(--border-soft-light);
+    .btn span.icon {
+      font-size: .85rem;
     }
 
-    body.light .btn-cta {
-      color: #111827;
+    #themeToggle {
+      min-width: 110px;
+      justify-content: center;
     }
 
-    /* PÁGINAS */
-    .page {
+    /* SECTIONS */
+    .section {
       flex: 1;
       border-radius: 14px;
-      border: 1px solid var(--border-soft);
-      background: var(--bg-card);
-      padding: 10px;
+      background: transparent;
+      overflow: hidden;
       display: none;
       flex-direction: column;
       gap: 10px;
-      min-height: 0;
-      overflow: hidden;
     }
-
-    body.light .page {
-      background: var(--bg-card-light);
-      border-color: var(--border-soft-light);
-    }
-
-    .page.active {
+    .section.active {
       display: flex;
     }
 
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 6px;
-    }
-
-    .page-header h2 {
-      font-size: 1rem;
-    }
-
-    .page-header small {
-      font-size: .75rem;
-      color: var(--text-muted);
-    }
-
-    /* Tarjeta simple */
     .card {
       background: var(--bg-card);
       border-radius: 14px;
@@ -293,337 +268,387 @@
       border: 1px solid var(--border-soft);
       display: flex;
       flex-direction: column;
-      gap: 6px;
-    }
-
-    body.light .card {
-      background: var(--bg-card-light);
-      border-color: var(--border-soft-light);
+      min-width: 0;
     }
 
     .card h3 {
-      font-size: .9rem;
+      font-size: .95rem;
+      margin-bottom: 4px;
     }
 
-    .badge-small {
-      font-size: .7rem;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: #111827;
+    .card-sub {
+      font-size: .72rem;
       color: var(--text-muted);
-      border: 1px solid var(--border-soft);
+      margin-bottom: 6px;
     }
 
-    body.light .badge-small {
-      background: #e5e7eb;
-      color: #374151;
-      border-color: #d1d5db;
+    /* DASHBOARD */
+    #dashboardSection {
+      overflow-y: auto;
     }
 
-    /* DASHBOARD LAYOUT */
-    #page-dashboard {
-      gap: 10px;
-    }
-
-    .dash-filters {
+    .dashboard-header {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .dashboard-header h1 {
+      font-size: 1.1rem;
+    }
+
+    .dashboard-filters {
+      display: grid;
+      grid-template-columns: 1.5fr 1.5fr;
       gap: 10px;
+      margin-bottom: 8px;
     }
 
-    .dash-filters .card {
-      flex: 1;
+    .filter-card {
+      background: var(--bg-card);
+      border-radius: 14px;
+      border: 1px solid var(--border-soft);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .dash-filters select {
-      margin-top: 4px;
+    .filter-card label {
+      font-size: .8rem;
+      color: var(--text-muted);
+    }
+
+    .filter-card select {
       width: 100%;
-      padding: 4px 8px;
-      border-radius: 8px;
+      padding: 6px 8px;
+      border-radius: 999px;
       border: 1px solid var(--border-soft);
       background: #020617;
       color: var(--text-main);
+      font-size: .8rem;
+      outline: none;
+    }
+    body.light .filter-card select {
+      background: #ffffff;
+      color: #111827;
+    }
+
+    .dashboard-kpis {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border-radius: 14px;
+      border: 1px solid var(--border-soft);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
       font-size: .78rem;
     }
 
-    body.light .dash-filters select {
-      background: #ffffff;
-      border-color: var(--border-soft-light);
-      color: var(--text-main-light);
+    .kpi-label {
+      color: var(--text-muted);
     }
-
-    .dash-kpi-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-
-    .dash-kpi {
-      font-size: .8rem;
-    }
-
-    .dash-kpi strong {
-      display: block;
-      font-size: .85rem;
-    }
-
-    .dash-kpi span.value {
+    .kpi-value {
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 700;
+    }
+    .kpi-extra {
+      font-size: .7rem;
+      color: var(--text-muted);
     }
 
-    .dash-main-grid {
+    .dashboard-main {
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 10px;
+      min-height: 0;
       flex: 1;
+    }
+
+    .dashboard-charts {
       display: grid;
-      grid-template-columns: 2fr 1.2fr;
-      gap: 10px;
-      min-height: 0;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-rows: 190px;
+      gap: 8px;
     }
 
-    .dash-charts {
-      display: grid;
-      grid-template-rows: repeat(2, 1fr);
-      gap: 10px;
-      min-height: 0;
+    .dashboard-charts .card {
+      padding: 8px;
     }
 
-    .dash-charts-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      min-height: 0;
-    }
-
-    .chart-box {
-      position: relative;
-      min-height: 0;
-    }
-
-    .chart-box canvas {
+    .dashboard-charts canvas {
       width: 100%;
       height: 100%;
     }
 
-    .dash-ranking {
+    .ranking-card {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-    }
-
-    .ranking-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: .8rem;
-    }
-
-    .ranking-list {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .ranking-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: .78rem;
-      padding: 4px 0;
       gap: 6px;
     }
 
-    .ranking-name {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .ranking-list {
+      margin-top: 4px;
+      overflow-y: auto;
+      max-height: 420px;
+      padding-right: 2px;
     }
 
-    .ranking-bar {
-      flex: 1.6;
+    .ranking-item {
+      font-size: .78rem;
+      margin-bottom: 6px;
+    }
+
+    .ranking-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .ranking-bar-bg {
+      flex: 1;
       height: 6px;
       border-radius: 999px;
-      background: #111827;
+      background: #020617;
       overflow: hidden;
-      margin: 0 6px;
+      border: 1px solid var(--border-soft);
     }
 
     .ranking-bar-fill {
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(90deg,#22c55e,#38bdf8);
+      background: linear-gradient(90deg, #22c55e, #0ea5e9);
     }
 
     /* CENTROS */
-    #page-centros {
-      gap: 10px;
+    #centrosSection {
+      overflow-y: hidden;
     }
 
     .centros-top {
       display: grid;
-      grid-template-columns: 1.4fr 1.6fr 1.4fr;
+      grid-template-columns: 1.2fr 1.5fr 1.3fr;
       gap: 10px;
-      min-height: 260px;
+      min-height: 250px;
     }
 
-    .delegados-list {
+    .delegados-container {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      max-height: 220px;
-      overflow-y: auto;
-    }
-
-    .delegado-bar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 6px;
-      border-radius: 10px;
-      cursor: pointer;
-      background: #020617;
-    }
-
-    body.light .delegado-bar {
-      background: #f3f4f6;
-    }
-
-    .delegado-bar-color {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-    }
-
-    .delegado-bar-main {
-      flex: 1;
-      display: flex;
-      justify-content: space-between;
-      font-size: .78rem;
-    }
-
-    .delegados-actions {
-      margin-top: 6px;
-      display: flex;
       gap: 8px;
     }
 
-    .calendar-grid {
-      display: grid;
-      grid-template-rows: auto auto 1fr;
-      gap: 4px;
+    .delegados-header-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .delegados-list-outer {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .delegado-item {
+      padding: 6px 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      margin-bottom: 4px;
+      cursor: pointer;
+    }
+
+    .delegado-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: .8rem;
+    }
+
+    .delegado-pill-color {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-right: 4px;
+    }
+
+    .delegado-bar-bg {
+      margin-top: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: #020617;
+      border: 1px solid var(--border-soft);
+      overflow: hidden;
+    }
+
+    .delegado-bar-fill {
       height: 100%;
+      width: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+    }
+
+    .delegados-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .calendar-card {
+      position: relative;
     }
 
     .calendar-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: .88rem;
-      font-weight: 600;
+      margin-bottom: 6px;
     }
 
-    .calendar-weekdays {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      font-size: .7rem;
-      text-align: center;
-      color: var(--text-muted);
-    }
-
-    .calendar-days {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      grid-auto-rows: 1fr;
+    .calendar-nav {
+      display: flex;
       gap: 4px;
     }
 
-    .calendar-day {
-      border-radius: 10px;
-      border: 1px solid #111827;
-      display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
-      padding: 4px;
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
       font-size: .78rem;
+    }
+
+    .calendar-day-name {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .calendar-cell {
+      min-height: 55px;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      background: #020617;
+      padding: 3px 4px;
       cursor: pointer;
-      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    body.light .calendar-cell {
+      background: #ffffff;
     }
 
-    body.light .calendar-day {
-      border-color: #e5e7eb;
+    .calendar-cell.disabled {
+      opacity: 0.25;
+      cursor: default;
     }
 
-    .calendar-day.today {
-      border-color: var(--accent-blue);
+    .calendar-date {
+      font-size: .72rem;
+      color: var(--text-muted);
     }
 
-    .calendar-day .day-number {
-      font-weight: 600;
-    }
-
-    .calendar-day .day-badge {
-      position: absolute;
-      right: 4px;
-      bottom: 4px;
-      width: 8px;
-      height: 8px;
+    .calendar-badge {
+      font-size: .7rem;
+      align-self: flex-end;
+      padding: 2px 4px;
       border-radius: 999px;
-      background: var(--accent-orange);
+      background: rgba(234,179,8,.15);
+      color: #eab308;
+    }
+
+    .visitas-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .visitas-list {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-height: 220px;
       overflow-y: auto;
+      padding-right: 4px;
       font-size: .78rem;
     }
 
     .visita-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: 4px 6px;
       border-radius: 10px;
-      background: #020617;
-    }
-
-    body.light .visita-item {
-      background: #f3f4f6;
-    }
-
-    .visita-topline {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tag-estado {
-      border-radius: 999px;
-      padding: 1px 6px;
-      font-size: .7rem;
-      border: 1px solid #1f2937;
-    }
-
-    .tag-pendiente { background: rgba(234,179,8,0.15); color: #eab308; border-color:#eab308;}
-    .tag-realizada { background: rgba(22,163,74,0.15); color:#22c55e; border-color:#22c55e;}
-    .tag-anulada   { background: rgba(248,113,113,0.15); color:#f97373; border-color:#f97373;}
-
-    .centros-table-wrapper {
-      flex: 1;
-      min-height: 0;
+      border: 1px solid var(--border-soft);
+      padding: 4px 6px;
+      margin-bottom: 4px;
       display: flex;
       flex-direction: column;
       gap: 4px;
+    }
+
+    .visita-main-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .visita-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: .72rem;
+      color: var(--text-muted);
+    }
+
+    .pill-estado {
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: .7rem;
+      border: 1px solid var(--border-soft);
+    }
+    .estado-pendiente {
+      background: rgba(234,179,8,.14);
+      color: #eab308;
+    }
+    .estado-proceso {
+      background: rgba(34,197,94,.14);
+      color: #4ade80;
+    }
+    .estado-finalizada {
+      background: rgba(22,163,74,.3);
+      color: #bbf7d0;
+    }
+    .estado-anulada {
+      background: rgba(248,113,113,.15);
+      color: #f97373;
+    }
+
+    .centros-table-wrapper {
+      flex: 1;
+      background: var(--bg-card);
+      border-radius: 14px;
+      border: 1px solid var(--border-soft);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      margin-top: 8px;
+    }
+
+    .centros-table-header {
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .8rem;
     }
 
     .centros-table-scroll {
       flex: 1;
       overflow: auto;
-      border-radius: 10px;
-      border: 1px solid var(--border-soft);
+      border-top: 1px solid var(--border-soft);
     }
 
     table {
@@ -638,9 +663,8 @@
       background: #020617;
       z-index: 2;
     }
-
     body.light thead {
-      background: #f9fafb;
+      background: #f3f4f6;
     }
 
     th, td {
@@ -648,10 +672,6 @@
       border-bottom: 1px solid #0b1120;
       text-align: left;
       white-space: nowrap;
-    }
-
-    body.light td {
-      border-bottom-color: #e5e7eb;
     }
 
     th {
@@ -663,7 +683,6 @@
     tbody tr:nth-child(even) {
       background: #020617;
     }
-
     body.light tbody tr:nth-child(even) {
       background: #f9fafb;
     }
@@ -671,7 +690,6 @@
     tbody tr:hover {
       background: rgba(15,23,42,0.9);
     }
-
     body.light tbody tr:hover {
       background: #e5e7eb;
     }
@@ -696,24 +714,6 @@
       border-color: rgba(37,99,235,0.7);
     }
 
-    .tag-aar {
-      background: rgba(148,163,184,0.15);
-      border-color: rgba(148,163,184,0.7);
-      color: var(--text-muted);
-    }
-
-    .tag-aar.si {
-      background: rgba(34,197,94,0.15);
-      border-color: rgba(34,197,94,0.7);
-      color: var(--accent-green);
-    }
-
-    .tag-aar.formacion {
-      background: rgba(234,179,8,0.15);
-      border-color: rgba(234,179,8,0.7);
-      color: #eab308;
-    }
-
     .btn-link {
       border: none;
       background: transparent;
@@ -723,261 +723,312 @@
       text-decoration: underline;
     }
 
-    /* ====== INFORME DE LA VISITA – NUEVO LAYOUT ====== */
-
-    #page-informe {
-      gap: 10px;
+    /* MODAL GENERAL */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
     }
 
-    .informe-page {
+    .modal {
+      background: #020617;
+      border-radius: 14px;
+      padding: 14px;
+      width: 420px;
+      max-width: 95%;
+      border: 1px solid var(--border-soft);
+    }
+
+    body.light .modal {
+      background: #ffffff;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .modal-header h3 {
+      font-size: .95rem;
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    .modal-body {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      height: 100%;
+      gap: 8px;
+      font-size: .78rem;
+    }
+
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .modal-field label {
+      font-size: .74rem;
+      color: var(--text-muted);
+    }
+
+    .modal-field input,
+    .modal-field select {
+      padding: 5px 7px;
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      background: #0b1120;
+      color: var(--text-main);
+      font-size: .78rem;
+      outline: none;
+    }
+    body.light .modal-field input,
+    body.light .modal-field select {
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    /* INFORME VISITA */
+    #informeSection {
       overflow-y: auto;
     }
 
-    .informe-main-print {
+    #informePrintWrapper {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
-    .informe-card {
-      background: var(--bg-card);
-      border-radius: 14px;
-      border: 1px solid var(--border-soft);
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    body.light .informe-card {
-      background: var(--bg-card-light);
-      border-color: var(--border-soft-light);
-    }
-
-    .informe-top-row {
+    .informe-header-row {
       display: grid;
-      grid-template-columns: 2.2fr 1.3fr;
+      grid-template-columns: 2fr 1.7fr;
       gap: 10px;
     }
 
     .informe-datos-grid {
       display: grid;
-      grid-template-columns: 1.1fr 1.1fr;
-      grid-template-rows: repeat(4, auto);
-      gap: 6px 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      font-size: .8rem;
     }
 
-    .informe-field {
+    .dato-line {
       display: flex;
       flex-direction: column;
       gap: 2px;
-      font-size: 0.78rem;
     }
 
-    .informe-field label {
-      font-size: 0.72rem;
+    .dato-label {
+      font-size: .7rem;
       color: var(--text-muted);
     }
 
-    .informe-field input {
-      background: #020617;
+    .dato-value input {
+      width: 100%;
+      padding: 4px 6px;
       border-radius: 8px;
       border: 1px solid var(--border-soft);
-      padding: 4px 8px;
+      background: #0b1120;
       color: var(--text-main);
-      font-size: 0.78rem;
+      font-size: .78rem;
+      outline: none;
+    }
+    body.light .dato-value input {
+      background: #f9fafb;
+      color: #111827;
     }
 
-    body.light .informe-field input {
-      background: #ffffff;
-      border-color: var(--border-soft-light);
-      color: var(--text-main-light);
-    }
-
-    .checklist-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .checklist-head small {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-    }
-
-    .checklist-file-info {
-      font-size: 0.7rem;
+    .checklist-info {
+      font-size: .75rem;
       color: var(--text-muted);
       margin-top: 4px;
     }
 
-    .informe-middle-row {
+    .informe-kpi-row {
       display: grid;
-      grid-template-columns: 1.5fr 1.1fr;
+      grid-template-columns: 1.6fr 1.2fr;
       gap: 10px;
     }
 
-    .kpi-chart-box,
-    .radar-chart-box {
-      height: 210px;
-    }
-
-    .kpi-chart-box canvas,
-    .radar-chart-box canvas {
+    .informe-kpi-row canvas {
       width: 100%;
-      height: 100%;
+      height: 200px;
     }
 
-    .informe-third-row {
+    .informe-mid-row {
       display: grid;
       grid-template-columns: 1.4fr 1.6fr;
       gap: 10px;
     }
 
-    .formaciones-box {
+    .formaciones-list {
+      font-size: .78rem;
       max-height: 260px;
       overflow-y: auto;
+      padding-right: 4px;
     }
 
-    .formaciones-box-inner {
-      font-size: .78rem;
+    .formaciones-list label {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
     }
 
     .imagenes-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
     }
 
-    .imagen-drop {
+    .imagen-slot {
       border-radius: 12px;
-      border: 1px dashed #334155;
+      border: 1px dashed #4b5563;
       background: #020617;
       min-height: 130px;
+      padding: 6px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      font-size: 0.78rem;
+      gap: 4px;
+      font-size: .8rem;
+      text-align: center;
+    }
+    body.light .imagen-slot {
+      background: #ffffff;
+    }
+
+    .imagen-slot span {
       color: var(--text-muted);
     }
 
-    body.light .imagen-drop {
-      background: #f9fafb;
-      border-color: #cbd5f5;
+    .imagen-slot input {
+      display: none;
     }
 
-    .imagen-drop input[type="file"] {
-      margin-top: 6px;
-      font-size: .7rem;
+    .imagen-preview {
+      max-width: 100%;
+      max-height: 80px;
+      border-radius: 8px;
+      object-fit: cover;
     }
 
     .informe-resumen-row {
       display: grid;
-      grid-template-columns: 1.1fr 1fr 1fr;
+      grid-template-columns: 1.5fr 1.5fr;
       gap: 10px;
     }
 
-    .resumen-chart-box {
-      height: 220px;
-    }
-
-    .resumen-chart-box canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    .informe-text-row {
+    .resumen-charts {
       display: grid;
-      grid-template-columns: 1.1fr 1.1fr 1.1fr;
-      gap: 10px;
+      grid-template-columns: 1.1fr 1.1fr;
+      gap: 8px;
+      align-items: center;
     }
 
-    .informe-text-area label {
-      display: block;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-    }
-
-    .informe-text-area textarea {
+    .resumen-charts canvas {
       width: 100%;
-      min-height: 120px;
+      height: 180px;
+    }
+
+    .resumen-textos {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .resumen-textos textarea {
+      width: 100%;
+      height: 90px;
       resize: vertical;
       border-radius: 10px;
       border: 1px solid var(--border-soft);
       background: #020617;
       color: var(--text-main);
-      font-size: 0.78rem;
-      padding: 6px 8px;
+      font-size: .78rem;
+      padding: 6px;
+      outline: none;
     }
-
-    body.light .informe-text-area textarea {
+    body.light .resumen-textos textarea {
       background: #ffffff;
-      border-color: var(--border-soft-light);
-      color: var(--text-main-light);
+      color: #111827;
     }
 
-    .informe-footer {
+    .textarea-label {
+      font-size: .78rem;
+      margin-bottom: 2px;
+    }
+
+    .informe-footer-actions {
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
       margin-top: 6px;
     }
 
-    #checklistImprimibleCard {
-      display: none;
+    /* CHECKLIST PRINT WRAPPER */
+    #checklistPrintWrapper {
+      margin-top: 12px;
     }
 
-    /* IMPRESIÓN */
+    /* PRINT */
     @media print {
       body {
-        background: #ffffff !important;
+        background: #ffffff;
+        color: #111827;
+        overflow: visible;
       }
+
       .sidebar,
       .topbar {
         display: none !important;
       }
-      .main {
-        padding: 0 !important;
-      }
-      .page {
-        border: none !important;
-        border-radius: 0 !important;
-      }
-      .page:not(.active) {
+
+      .section {
         display: none !important;
       }
-      #page-informe {
-        padding: 0 !important;
+
+      #informeSection {
+        display: block !important;
+        overflow: visible;
       }
-      #page-informe .informe-page {
-        overflow: visible !important;
+
+      @page {
+        size: A4;
+        margin: 10mm;
       }
-      #page-informe .informe-main-print {
+
+      #informePrintWrapper {
         page-break-after: always;
       }
-      #checklistImprimibleCard {
-        display: block !important;
-        page-break-inside: avoid;
+
+      .card {
+        background: #ffffff;
+        border-color: #d1d5db;
       }
-      #checklistImprimibleCard table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: .7rem;
-      }
-      #checklistImprimibleCard th,
-      #checklistImprimibleCard td {
-        border: 1px solid #4b5563;
-        padding: 3px 4px;
+
+      .btn,
+      .btn-cta {
+        display: none !important;
       }
     }
   </style>
@@ -995,14 +1046,14 @@
 
     <div>
       <div class="section-title">Secciones</div>
-      <nav class="nav-list" id="navList">
-        <div class="nav-item active" data-page="dashboard">
+      <nav class="nav-list">
+        <div class="nav-item active" data-section="dashboardSection">
           <span class="icon">📊</span> Dashboard
         </div>
-        <div class="nav-item" data-page="centros">
+        <div class="nav-item" data-section="centrosSection">
           <span class="icon">🏢</span> Centros
         </div>
-        <div class="nav-item" data-page="informe">
+        <div class="nav-item" data-section="informeSection">
           <span class="icon">📝</span> Informe de la visita
         </div>
       </nav>
@@ -1015,136 +1066,151 @@
 
   <!-- MAIN -->
   <main class="main">
-    <!-- TOPBAR -->
+    <!-- Topbar -->
     <div class="topbar">
-      <div class="search-wrapper">
+      <div class="search-global">
         <span class="search-icon">🔍</span>
-        <input class="search-input" placeholder="Buscar por centro, propietario o delegado..." />
+        <input placeholder="Buscar por centro, propietario o delegado..." />
       </div>
       <div class="topbar-actions">
-        <button class="btn" id="themeToggle"><span class="icon">🌓</span> Oscuro / Claro</button>
-        <button class="btn"><span class="icon">💾</span> Guardar vista</button>
-        <button class="btn btn-cta" id="btnExportHtml"><span class="icon">⬇️</span> Exportar HTML</button>
-        <button class="btn" id="btnPrint"><span class="icon">🖨</span> Imprimir</button>
-        <button class="btn btn-cta"><span class="icon">☁️</span> Actualizar datos nube</button>
+        <button class="btn" id="themeToggle">
+          <span class="icon">🌓</span> Oscuro / Claro
+        </button>
+        <button class="btn" id="btnGuardarVista">
+          <span class="icon">💾</span> Guardar vista
+        </button>
+        <button class="btn btn-cta" id="btnExportarHTML">
+          <span class="icon">⬇️</span> Exportar HTML
+        </button>
+        <button class="btn btn-cta" id="btnImprimir">
+          <span class="icon">🖨</span> Imprimir
+        </button>
+        <button class="btn btn-cta">
+          <span class="icon">☁️</span> Actualizar datos nube
+        </button>
       </div>
     </div>
 
     <!-- DASHBOARD -->
-    <section id="page-dashboard" class="page active">
-      <div class="page-header">
-        <h2>Dashboard</h2>
+    <section id="dashboardSection" class="section active">
+      <div class="dashboard-header">
+        <h1>Dashboard</h1>
       </div>
 
-      <!-- Filtros -->
-      <div class="dash-filters">
-        <div class="card">
-          <h3>Filtro por delegado</h3>
-          <select id="filtroDelegadoDash">
+      <div class="dashboard-filters">
+        <div class="filter-card">
+          <label for="filtroDelegado">Filtro por delegado</label>
+          <select id="filtroDelegado">
             <option value="todos">Todos los delegados</option>
-            <option>Daniel Chazo</option>
-            <option>Eneritz ARANGUREN</option>
             <option>Blanca Fdez. de la Pradilla</option>
-            <option>Marisa Carmona</option>
             <option>Sergio Perán</option>
+            <option>Daniel Chazo</option>
             <option>Sonia Godino</option>
+            <option>Eneritz ARANGUREN</option>
+            <option>Marisa Carmona</option>
           </select>
         </div>
-        <div class="card">
-          <h3>Filtro por centro</h3>
-          <select id="filtroCentroDash">
+        <div class="filter-card">
+          <label for="filtroCentro">Filtro por centro</label>
+          <select id="filtroCentro">
             <option value="todos">Todos los centros</option>
             <option>PAMPLONA C. Exclusivo</option>
             <option>REINA DE MERCEDES</option>
-            <option>SANTIAGO DE COMPOSTELA RUA DA ROSA</option>
+            <option>SANTANDER CC PEÑACASTILLO</option>
           </select>
         </div>
       </div>
 
       <!-- KPIs -->
-      <div class="dash-kpi-row">
-        <div class="card dash-kpi">
-          <strong>% Procesos</strong>
-          <span class="value" id="kpiProcesos">–</span>
-          <span>Objetivo 85–100%</span>
+      <div class="dashboard-kpis">
+        <div class="kpi-card">
+          <div class="kpi-label">% Procesos</div>
+          <div class="kpi-value" id="kpiProcesos">82%</div>
+          <div class="kpi-extra">Objetivo 85–100%</div>
         </div>
-        <div class="card dash-kpi">
-          <strong>Conversión a prueba</strong>
-          <span class="value" id="kpiConvPrueba">–</span>
-          <span>Objetivo 80%</span>
+        <div class="kpi-card">
+          <div class="kpi-label">Conv. a prueba</div>
+          <div class="kpi-value" id="kpiPrueba">78%</div>
+          <div class="kpi-extra">Objetivo 80%</div>
         </div>
-        <div class="card dash-kpi">
-          <strong>Conversión a venta</strong>
-          <span class="value" id="kpiConvVenta">–</span>
-          <span>Objetivo 80%</span>
+        <div class="kpi-card">
+          <div class="kpi-label">Conv. a venta</div>
+          <div class="kpi-value" id="kpiVenta">72%</div>
+          <div class="kpi-extra">Objetivo 80%</div>
         </div>
-        <div class="card dash-kpi">
-          <strong>% Primeros auxilios</strong>
-          <span class="value" id="kpiPrimerosAux">–</span>
-          <span>Equipos formados</span>
+        <div class="kpi-card">
+          <div class="kpi-label">% Formaciones</div>
+          <div class="kpi-value" id="kpiFormaciones">65%</div>
+          <div class="kpi-extra">Media de módulos</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Ayuda / Telecare</div>
+          <div class="kpi-value" id="kpiAyuda">70%</div>
+          <div class="kpi-extra">Telecare / PIA / Telehear</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">% AAR</div>
+          <div class="kpi-value" id="kpiAAR">55%</div>
+          <div class="kpi-extra">Centros con AAR</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">% Primeros auxilios</div>
+          <div class="kpi-value" id="kpi1osAux">68%</div>
+          <div class="kpi-extra">Equipos formados</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Visitas registradas</div>
+          <div class="kpi-value" id="kpiVisitas">0</div>
+          <div class="kpi-extra">En el periodo</div>
         </div>
       </div>
 
-      <!-- Zona principal -->
-      <div class="dash-main-grid">
-        <div class="dash-charts">
-          <div class="dash-charts-row">
-            <div class="card chart-box">
-              <h3>Radar general</h3>
-              <canvas id="dashRadar"></canvas>
-            </div>
-            <div class="card chart-box">
-              <h3>Procesos y áreas de mejora por mes</h3>
-              <canvas id="dashProcesosAreas"></canvas>
-            </div>
-            <div class="card chart-box">
-              <h3>Áreas de mejora por mes</h3>
-              <canvas id="dashAreasMes"></canvas>
-            </div>
+      <div class="dashboard-main">
+        <div class="dashboard-charts">
+          <div class="card">
+            <h3>Radar general</h3>
+            <canvas id="radarGeneral"></canvas>
           </div>
-          <div class="dash-charts-row">
-            <div class="card chart-box">
-              <h3>Primeros auxilios por mes</h3>
-              <canvas id="dashPrimerosAux"></canvas>
-            </div>
-            <div class="card chart-box">
-              <h3>Top 10 áreas de mejora</h3>
-              <canvas id="dashTopAreas"></canvas>
-            </div>
-            <div class="card chart-box">
-              <h3>Aplicación AAR / HIT</h3>
-              <canvas id="dashAARHIT"></canvas>
-            </div>
+          <div class="card">
+            <h3>Procesos y áreas de mejora por mes</h3>
+            <canvas id="chartProcesosAreasMes"></canvas>
+          </div>
+          <div class="card">
+            <h3>Áreas de mejora por mes</h3>
+            <canvas id="chartAreasMes"></canvas>
+          </div>
+          <div class="card">
+            <h3>Primeros auxilios por mes</h3>
+            <canvas id="chartAuxilios"></canvas>
+          </div>
+          <div class="card">
+            <h3>Top 10 áreas de mejora</h3>
+            <canvas id="chartTopAreas"></canvas>
+          </div>
+          <div class="card">
+            <h3>Aplicación AAR / HIT</h3>
+            <canvas id="chartAARHIT"></canvas>
           </div>
         </div>
 
-        <!-- Ranking delegados -->
-        <div class="card dash-ranking">
-          <div class="ranking-header">
-            <span>Ranking de delegados</span>
-            <button class="btn-link" id="btnMostrarTodosDeleg">Mostrar todos</button>
-          </div>
-          <div class="ranking-list" id="rankingDelegados">
-            <!-- se rellena con JS -->
-          </div>
+        <div class="card ranking-card">
+          <h3>Ranking de delegados</h3>
+          <div class="card-sub">Barras por KPI global (demo).</div>
+          <div class="ranking-list" id="rankingDelegados"></div>
         </div>
       </div>
     </section>
 
     <!-- CENTROS -->
-    <section id="page-centros" class="page">
-      <div class="page-header">
-        <h2>Centros</h2>
-      </div>
-
+    <section id="centrosSection" class="section">
       <div class="centros-top">
         <!-- Delegados -->
-        <article class="card">
-          <div class="page-header" style="margin-bottom:4px;">
-            <h3 style="font-size:.9rem;">Centros y delegados</h3>
-            <span class="badge-small" id="badgeNumDelegados">– delegados</span>
+        <article class="card delegados-container">
+          <div class="delegados-header-line">
+            <h3>Centros y delegados</h3>
+            <span id="contadorDelegados" class="badge-small"></span>
           </div>
-          <div class="delegados-list" id="delegadosList"></div>
+          <div class="delegados-list-outer" id="delegadosList"></div>
           <div class="delegados-actions">
             <button class="btn btn-cta" id="btnAddCentro">
               <span class="icon">➕</span> Añadir centro
@@ -1152,43 +1218,36 @@
             <button class="btn" id="btnAdjuntarExcelCentros">
               <span class="icon">📤</span> Adjuntar centros (Excel)
             </button>
-            <input type="file" id="inputExcelCentros" accept=".xlsx,.xls" style="display:none">
+            <input type="file" id="inputExcelCentros" accept=".xlsx,.xls" style="display:none" />
           </div>
         </article>
 
         <!-- Calendario -->
-        <article class="card">
-          <div class="calendar-grid">
-            <div class="calendar-header">
-              <button class="btn" id="calPrevMes" style="padding:2px 8px;font-size:.78rem;">◀</button>
-              <span id="calTituloMes" style="font-size:.95rem;font-weight:600;"></span>
-              <button class="btn" id="calNextMes" style="padding:2px 8px;font-size:.78rem;">▶</button>
+        <article class="card calendar-card">
+          <div class="calendar-header">
+            <h3 id="calendarTitle">Diciembre 2025</h3>
+            <div class="calendar-nav">
+              <button class="btn" id="calPrev"><span class="icon">◀</span></button>
+              <button class="btn" id="calNext"><span class="icon">▶</span></button>
             </div>
-            <div class="calendar-weekdays">
-              <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
-            </div>
-            <div class="calendar-days" id="calendarDays"></div>
           </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
         </article>
 
         <!-- Visitas -->
-        <article class="card">
-          <div class="page-header" style="margin-bottom:4px;">
-            <h3 style="font-size:.9rem;">Visitas agendadas</h3>
-          </div>
-          <div class="visitas-list" id="visitasList">
-            <!-- items demo -->
-          </div>
+        <article class="card visitas-card">
+          <h3>Visitas agendadas</h3>
+          <div class="visitas-list" id="visitasList"></div>
         </article>
       </div>
 
       <!-- Tabla de centros -->
       <section class="centros-table-wrapper">
-        <div class="page-header" style="margin-top:4px;">
+        <div class="centros-table-header">
           <div>
-            <h3 style="font-size:.9rem;">Listado de centros</h3>
+            <strong>Listado de centros</strong>
           </div>
-          <span class="badge-small" id="totalCentrosLabel">Centros mostrados: 0 / 0</span>
+          <span id="labelCentrosMostrados" class="badge-small"></span>
         </div>
         <div class="centros-table-scroll">
           <table>
@@ -1200,8 +1259,7 @@
                 <th>Provincia</th>
                 <th>Delegado</th>
                 <th>Tipo</th>
-                <th>Informes</th>
-                <th>Centro AAR</th>
+                <th>Informe</th>
               </tr>
             </thead>
             <tbody id="tablaCentrosBody"></tbody>
@@ -1211,602 +1269,858 @@
     </section>
 
     <!-- INFORME DE LA VISITA -->
-    <section id="page-informe" class="page">
-      <div class="page-header">
-        <h2>Informe de la visita</h2>
-      </div>
-
-      <div class="informe-page">
-        <div class="informe-main-print">
-          <!-- 1) DATOS + CHECKLIST -->
-          <div class="informe-top-row">
-            <article class="informe-card">
-              <h3 style="font-size:.9rem;">Datos del centro</h3>
-              <div class="informe-datos-grid">
-                <div class="informe-field">
-                  <label>Centro</label>
-                  <input id="infCentro" />
-                </div>
-                <div class="informe-field">
-                  <label>Provincia</label>
-                  <input id="infProvincia" />
-                </div>
-                <div class="informe-field">
-                  <label>Delegado</label>
-                  <input id="infDelegado" />
-                </div>
-                <div class="informe-field">
-                  <label>Tipo</label>
-                  <input id="infTipo" />
-                </div>
-                <div class="informe-field">
-                  <label>Responsable audio</label>
-                  <input id="infRespAudio" />
-                </div>
-                <div class="informe-field">
-                  <label>Fecha visita</label>
-                  <input id="infFecha" />
-                </div>
-                <div class="informe-field">
-                  <label>Audiólogo</label>
-                  <input id="infAudiologo" />
-                </div>
-                <div class="informe-field">
-                  <label>Horas de servicio</label>
-                  <input id="infHoras" />
-                </div>
+    <section id="informeSection" class="section">
+      <div id="informePrintWrapper">
+        <!-- Cabecera datos + checklist -->
+        <div class="informe-header-row">
+          <article class="card">
+            <h3>Datos del centro</h3>
+            <div class="informe-datos-grid">
+              <div class="dato-line">
+                <span class="dato-label">Centro</span>
+                <div class="dato-value"><input id="infCentro" /></div>
               </div>
-            </article>
-
-            <article class="informe-card">
-              <div class="checklist-head">
-                <div>
-                  <h3 style="font-size:.9rem;">Checklist de visita</h3>
-                  <small>Adjunta el checklist del centro (Corner o Exclusivo). Los KPIs se calcularán a partir de este archivo.</small>
-                </div>
+              <div class="dato-line">
+                <span class="dato-label">Provincia</span>
+                <div class="dato-value"><input id="infProvincia" /></div>
               </div>
-              <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
-                <input type="file" id="checklistFile" accept=".xlsx,.xls" />
-                <button class="btn btn-cta" id="btnAdjuntarChecklist">Adjuntar checklist</button>
+              <div class="dato-line">
+                <span class="dato-label">Delegado</span>
+                <div class="dato-value"><input id="infDelegado" /></div>
               </div>
-              <p id="checklistFileName" class="checklist-file-info">
-                Ningún checklist adjunto (demo).
-              </p>
-            </article>
-          </div>
-
-          <!-- 2) KPIs + RADAR -->
-          <div class="informe-middle-row">
-            <article class="informe-card kpi-chart-box">
-              <h3 style="font-size:.9rem;">KPIs del centro</h3>
-              <canvas id="chartKPIsCentro"></canvas>
-            </article>
-            <article class="informe-card radar-chart-box">
-              <h3 style="font-size:.9rem;">Radar del centro</h3>
-              <canvas id="chartRadarCentro"></canvas>
-            </article>
-          </div>
-
-          <!-- 3) FORMACIONES + IMÁGENES -->
-          <div class="informe-third-row">
-            <article class="informe-card formaciones-box">
-              <h3 style="font-size:.9rem;">Formaciones y habilidades</h3>
-              <div class="formaciones-box-inner" id="listaFormaciones">
-                <!-- Grupo demo – usa tus checkboxes reales -->
-                <label><input type="checkbox"> WSA</label>
-                <label><input type="checkbox"> Starkey</label>
-                <label><input type="checkbox"> Habilidades comerciales / Neuroventas</label>
-                <label><input type="checkbox"> HIT</label>
-                <label><input type="checkbox"> Telecare</label>
-                <label><input type="checkbox"> PIA</label>
-                <label><input type="checkbox"> Telehear</label>
-                <label><input type="checkbox"> Financiación Infinity</label>
-                <label><input type="checkbox"> Venta de seguro</label>
-                <label><input type="checkbox"> Primeros auxilios (equipo)</label>
-                <label><input type="checkbox"> Producto y comunicación</label>
-                <label><input type="checkbox"> Audiometría RT</label>
-                <label><input type="checkbox"> Test de lectura audio</label>
-                <label><input type="checkbox"> Screening audio</label>
-                <label><input type="checkbox"> Manteleta audio</label>
-                <label><input type="checkbox"> Escaparate visible audio</label>
-                <label><input type="checkbox"> Salud auditiva en PDV</label>
-                <label><input type="checkbox"> Elementos Renove</label>
-                <label><input type="checkbox"> Elementos MGM</label>
-                <label><input type="checkbox"> Stock</label>
-                <label><input type="checkbox"> Tchin Tchin</label>
+              <div class="dato-line">
+                <span class="dato-label">Tipo</span>
+                <div class="dato-value"><input id="infTipo" /></div>
               </div>
-            </article>
-
-            <article class="informe-card">
-              <h3 style="font-size:.9rem;">Imágenes del centro</h3>
-              <div class="imagenes-grid">
-                <div class="imagen-drop">
-                  <strong>Centro exterior</strong>
-                  <input type="file" accept="image/*">
-                  <span>Adjuntar imagen</span>
-                </div>
-                <div class="imagen-drop">
-                  <strong>Centro interior</strong>
-                  <input type="file" accept="image/*">
-                  <span>Adjuntar imagen</span>
-                </div>
-                <div class="imagen-drop">
-                  <strong>Gabinete</strong>
-                  <input type="file" accept="image/*">
-                  <span>Adjuntar imagen</span>
-                </div>
+              <div class="dato-line">
+                <span class="dato-label">Responsable audio</span>
+                <div class="dato-value"><input id="infRespAudio" /></div>
               </div>
-            </article>
-          </div>
-
-          <!-- 4) RESUMEN DE LA VISITA: 3 GRÁFICAS -->
-          <article class="informe-card">
-            <h3 style="font-size:.9rem;">Resumen de la visita</h3>
-            <div class="informe-resumen-row">
-              <div class="resumen-chart-box">
-                <canvas id="chartProcesosAplicados"></canvas>
+              <div class="dato-line">
+                <span class="dato-label">Fecha visita</span>
+                <div class="dato-value"><input id="infFecha" /></div>
               </div>
-              <div class="resumen-chart-box">
-                <canvas id="chartAreasMejoraCentro"></canvas>
+              <div class="dato-line">
+                <span class="dato-label">Audiólogo</span>
+                <div class="dato-value"><input id="infAudiologo" /></div>
               </div>
-              <div class="resumen-chart-box">
-                <canvas id="chartConversionCentro"></canvas>
+              <div class="dato-line">
+                <span class="dato-label">Horas de servicio</span>
+                <div class="dato-value"><input id="infHoras" /></div>
               </div>
             </div>
           </article>
 
-          <!-- 5) TEXTO -->
-          <article class="informe-card">
-            <div class="informe-text-row">
-              <div class="informe-text-area">
-                <label for="txtObservaciones">Observaciones</label>
-                <textarea id="txtObservaciones"></textarea>
-              </div>
-              <div class="informe-text-area">
-                <label for="txtRecomendaciones">Recomendaciones</label>
-                <textarea id="txtRecomendaciones"></textarea>
-              </div>
-              <div class="informe-text-area">
-                <label for="txtCompromisos">Compromisos</label>
-                <textarea id="txtCompromisos"></textarea>
-              </div>
-            </div>
-            <div class="informe-footer">
-              <button class="btn btn-cta" id="btnGuardarInforme">Guardar informe</button>
+          <article class="card">
+            <h3>Checklist de visita</h3>
+            <p class="card-sub">
+              Adjunta el checklist del centro (Corner o Exclusivo). El informe usará sus datos para calcular KPIs y áreas de mejora.
+            </p>
+            <input type="file" id="inputChecklist" accept=".xlsx,.xls" />
+            <div class="checklist-info" id="checklistInfo">
+              Ningún checklist adjunto.
             </div>
           </article>
         </div>
 
-        <!-- 2ª HOJA: CHECKLIST PARA IMPRESIÓN -->
-        <article class="informe-card" id="checklistImprimibleCard">
-          <h3 style="font-size:.9rem;">Checklist anexado (para impresión)</h3>
-          <div id="checklistImprimible">
-            <p style="font-size:.75rem; color:var(--text-muted);">
-              No hay checklist cargado. Cuando adjuntes un Excel, se mostrará aquí en forma de tabla.
-            </p>
-          </div>
-        </article>
+        <!-- KPIs + radar -->
+        <div class="informe-kpi-row">
+          <article class="card">
+            <h3>KPIs del centro</h3>
+            <canvas id="chartKpisCentro"></canvas>
+          </article>
+          <article class="card">
+            <h3>Radar del centro</h3>
+            <canvas id="chartRadarCentro"></canvas>
+          </article>
+        </div>
+
+        <!-- Formaciones + imágenes -->
+        <div class="informe-mid-row">
+          <article class="card">
+            <h3>Formaciones y habilidades</h3>
+            <div class="formaciones-list" id="formacionesList">
+              <!-- checkboxes -->
+            </div>
+          </article>
+          <article class="card">
+            <h3>Imágenes del centro</h3>
+            <div class="imagenes-grid">
+              <div class="imagen-slot" data-target="ext">
+                <strong>Centro exterior</strong>
+                <span>Adjuntar imagen</span>
+                <img class="imagen-preview" id="previewExt" style="display:none" />
+                <input type="file" accept="image/*" />
+              </div>
+              <div class="imagen-slot" data-target="int">
+                <strong>Centro interior</strong>
+                <span>Adjuntar imagen</span>
+                <img class="imagen-preview" id="previewInt" style="display:none" />
+                <input type="file" accept="image/*" />
+              </div>
+              <div class="imagen-slot" data-target="gab">
+                <strong>Gabinete</strong>
+                <span>Adjuntar imagen</span>
+                <img class="imagen-preview" id="previewGab" style="display:none" />
+                <input type="file" accept="image/*" />
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Resumen visita -->
+        <div class="informe-resumen-row">
+          <article class="card">
+            <h3>Resumen de la visita</h3>
+            <div class="resumen-charts">
+              <canvas id="chartResumenProcesos"></canvas>
+              <canvas id="chartResumenAreas"></canvas>
+              <canvas id="chartResumenConv"></canvas>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Observaciones, recomendaciones y compromisos</h3>
+            <div class="resumen-textos">
+              <div>
+                <div class="textarea-label">Observaciones</div>
+                <textarea id="txtObservaciones"></textarea>
+              </div>
+              <div>
+                <div class="textarea-label">Recomendaciones</div>
+                <textarea id="txtRecomendaciones"></textarea>
+              </div>
+              <div>
+                <div class="textarea-label">Compromisos</div>
+                <textarea id="txtCompromisos"></textarea>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="informe-footer-actions">
+          <button class="btn btn-cta" id="btnGuardarInforme">
+            <span class="icon">💾</span> Guardar informe
+          </button>
+        </div>
+      </div>
+
+      <!-- Segunda página: checklist -->
+      <div id="checklistPrintWrapper">
+        <h3>Checklist adjunto</h3>
+        <div id="checklistTablaCont">
+          <p style="font-size:.8rem;color:var(--text-muted);">
+            No se ha adjuntado checklist en esta visita.
+          </p>
+        </div>
       </div>
     </section>
   </main>
 
+  <!-- MODAL VISITA -->
+  <div class="modal-backdrop" id="modalVisita">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Agendar visita</h3>
+        <span class="modal-close" data-close="modalVisita">✕</span>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label>Fecha seleccionada</label>
+          <input id="visitaFecha" readonly />
+        </div>
+        <div class="modal-field">
+          <label>Responsable de Audio</label>
+          <select id="visitaRespAudio">
+            <option value="Ariannys Rojas">Ariannys Rojas</option>
+            <option value="Sonia Guasque">Sonia Guasque</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Centro</label>
+          <input id="visitaCentro" list="centrosDatalist" />
+          <datalist id="centrosDatalist"></datalist>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-close="modalVisita">Cancelar</button>
+        <button class="btn btn-cta" id="btnGuardarVisita">Guardar visita</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // ====== UTILIDADES BÁSICAS ======
+    /***** UTILIDADES *****/
     const $ = sel => document.querySelector(sel);
-    const $$ = sel => document.querySelectorAll(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
 
-    // NAV entre páginas
-    const pages = {
-      dashboard: $('#page-dashboard'),
-      centros: $('#page-centros'),
-      informe: $('#page-informe')
-    };
-
-    $$('#navList .nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        $$('#navList .nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        const page = item.dataset.page;
-        Object.keys(pages).forEach(k => pages[k].classList.remove('active'));
-        pages[page].classList.add('active');
+    function toggleSection(id) {
+      $$('.section').forEach(s => s.classList.remove('active'));
+      $('#' + id).classList.add('active');
+      $$('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.section === id);
       });
-    });
+    }
 
-    // Tema claro / oscuro
+    /***** TEMA *****/
     $('#themeToggle').addEventListener('click', () => {
       document.body.classList.toggle('light');
     });
 
-    // Exportar HTML (archivo único)
-    $('#btnExportHtml').addEventListener('click', () => {
-      const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'});
+    /***** NAVEGACIÓN *****/
+    $$('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        toggleSection(item.dataset.section);
+      });
+    });
+
+    /***** EXPORTAR HTML (descarga el archivo actual) *****/
+    $('#btnExportarHTML').addEventListener('click', () => {
+      const blob = new Blob([document.documentElement.outerHTML], {type: "text/html;charset=utf-8"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'control-center-audio.html';
+      a.download = "control-center-audio.html";
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
     });
 
-    // Imprimir sección activa
-    $('#btnPrint').addEventListener('click', () => {
+    /***** IMPRIMIR: siempre imprime Informe de visita + checklist *****/
+    $('#btnImprimir').addEventListener('click', () => {
+      toggleSection('informeSection');
       window.print();
     });
 
-    // ====== DASHBOARD – CHARTS DEMO ======
-    let dashRadar, dashProcesosAreas, dashAreasMes, dashPrimerosAux, dashTopAreas, dashAARHIT;
-
-    function makeBarChart(ctx, labels, data, color, stacked=false, max=100) {
-      return new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            data,
-            backgroundColor: color
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: max,
-              ticks: {
-                callback: v => v + '%'
-              }
-            }
-          },
-          plugins: {
-            legend: {display:false},
-            tooltip: {
-              callbacks: {
-                label: ctx => ctx.parsed.y + '%'
-              }
-            }
-          }
-        }
-      });
-    }
-
-    function makeLineChart(ctx, labels, data, color) {
-      return new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            data,
-            borderColor: color,
-            backgroundColor: 'transparent',
-            tension: 0.3,
-            pointRadius: 3
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              ticks: { callback: v => v + '%' }
-            }
-          },
-          plugins: { legend: {display:false} }
-        }
-      });
-    }
-
-    function makeDonut(ctx, labels, data, colors) {
-      return new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors }]},
-        options: {
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins: { legend:{position:'bottom'} }
-        }
-      });
-    }
-
-    function makeRadar(ctx, labels, data) {
-      return new Chart(ctx, {
-        type:'radar',
-        data:{
-          labels,
-          datasets:[{
-            data,
-            borderColor:'#38bdf8',
-            backgroundColor:'rgba(56,189,248,0.15)',
-            pointBackgroundColor:'#38bdf8'
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins:{legend:{display:false}},
-          scales:{
-            r:{
-              beginAtZero:true,
-              max:100,
-              ticks:{display:false}
-            }
-          }
-        }
-      });
-    }
-
-    function initDashboard() {
-      const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov'];
-      dashRadar = makeRadar($('#dashRadar'), ['Procesos','Conv. prueba','Conv. venta','Formación','Producto'], [80,75,70,65,60]);
-      dashProcesosAreas = new Chart($('#dashProcesosAreas'), {
-        type:'bar',
-        data:{
-          labels: meses,
-          datasets:[
-            {
-              type:'line',
-              label:'Procesos %',
-              data:[70,72,75,78,80,82,83,84,85,86,87],
-              borderColor:'#38bdf8',
-              backgroundColor:'transparent',
-              yAxisID:'y'
-            },
-            {
-              type:'bar',
-              label:'Áreas de mejora',
-              data:[6,6,5,5,4,4,3,3,3,2,2].map(x=>x*10),
-              backgroundColor:'#f97316',
-              yAxisID:'y'
-            }
-          ]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          scales:{
-            y:{
-              beginAtZero:true,
-              max:100,
-              ticks:{callback:v=>v+'%'}
-            }
-          },
-          plugins:{legend:{display:false}}
-        }
-      });
-
-      dashAreasMes = makeBarChart($('#dashAreasMes'), meses, [6,6,5,5,4,4,3,3,3,2,2].map(x=>x*10), '#ef4444');
-      dashPrimerosAux = makeBarChart($('#dashPrimerosAux'), meses, [10,20,30,40,50,60,70,75,80,85,90], '#22c55e');
-      dashTopAreas = makeBarChart($('#dashTopAreas'), ['Seguimiento','Escaparate','Formación','Postventa','Citas'], [60,55,50,45,40], '#60a5fa', false, 100);
-      dashAARHIT = makeDonut($('#dashAARHIT'), ['Centros con AAR','Sin AAR'], [65,35], ['#22c55e','#ef4444']);
-
-      // KPIs superiores demo
-      $('#kpiProcesos').textContent = '82%';
-      $('#kpiConvPrueba').textContent = '78%';
-      $('#kpiConvVenta').textContent = '72%';
-      $('#kpiPrimerosAux').textContent = '68%';
-
-      // Ranking demo
-      const delegadosDemo = [
-        {nombre:'Blanca Fdez. de la Pradilla', score:90},
-        {nombre:'Sergio Perán', score:87},
-        {nombre:'Daniel Chazo', score:84},
-        {nombre:'Sonia Godino', score:83},
-        {nombre:'Eneritz ARANGUREN', score:83},
-        {nombre:'Marisa Carmona', score:80},
-      ];
-      const cont = $('#rankingDelegados');
-      cont.innerHTML = '';
-      delegadosDemo.forEach((d,idx)=>{
-        const row = document.createElement('div');
-        row.className = 'ranking-item';
-        row.innerHTML = `
-          <span style="width:18px;font-size:.72rem;">${idx+1}.</span>
-          <span class="ranking-name">${d.nombre}</span>
-          <div class="ranking-bar"><div class="ranking-bar-fill" style="width:${d.score}%;"></div></div>
-          <span style="width:26px;font-size:.72rem;">${d.score}</span>
-        `;
-        cont.appendChild(row);
-      });
-      $('#btnMostrarTodosDeleg').addEventListener('click',()=>alert('En una versión real se mostrarían todos los delegados.'));
-    }
-
-    // ====== CENTROS – DEMO SIMPLE ======
-    const delegadosColores = {
-      "Daniel Chazo": "#a855f7",
-      "ENERITZ ARANGUREN": "#22c55e",
-      "Blanca Fdez. de la Pradilla": "#ec4899",
-      "Marisa Carmona": "#eab308",
-      "Sergio Perán": "#fb7185",
-      "Sonia Godino": "#22d3ee"
-    };
-
-    const centros = [
-      {codigo:"4ABB", propietario:"MAZA Oriol", centro:"PAMPLONA C. Exclusivo", provincia:"NAVARRA", delegado:"Sonia Godino", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4AFH", propietario:"MAZA Oriol", centro:"PAMPLONA Calle Sancho el Mayor", provincia:"NAVARRA", delegado:"Sonia Godino", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4AWQ", propietario:"MAZA Oriol", centro:"PAMPLONA Carlos III", provincia:"NAVARRA", delegado:"Sonia Godino", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4MRM", propietario:"AAO", centro:"REINA DE MERCEDES", provincia:"Madrid", delegado:"Sergio Perán", tipo:"Exclusivo", aar:"Sí"},
-      {codigo:"4PEC", propietario:"AAO", centro:"SANTANDER CC PEÑACASTILLO", provincia:"Santander", delegado:"Sergio Perán", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4AXF", propietario:"URRUTIA Esteban", centro:"SANTIAGO DE COMPOSTELA RUA DA ROSA", provincia:"A Coruña", delegado:"Daniel Chazo", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4TOL", propietario:"AAO", centro:"TORRELAVEGA CARREFOUR CC", provincia:"Santander", delegado:"Sergio Perán", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4ZDE", propietario:"AAO", centro:"ZARAGOZA CALLE DELICIAS", provincia:"ZARAGOZA", delegado:"ENERITZ ARANGUREN", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4AKI", propietario:"PIEDRAFITA Rocio", centro:"CC LOS VALLES", provincia:"MADRID", delegado:"Blanca Fdez. de la Pradilla", tipo:"Exclusivo", aar:"No"},
-      {codigo:"4MLG", propietario:"AAO", centro:"FUENLABRADA Calle Leganes", provincia:"MADRID", delegado:"Marisa Carmona", tipo:"Exclusivo", aar:"No"}
+    /***** DATOS DEMO CENTROS *****/
+    const centrosData = [
+      {codigo:"4ABB", propietario:"MAZA Oriol", centro:"PAMPLONA C. Exclusivo", provincia:"NAVARRA", delegado:"Sonia Godino", tipo:"Exclusivo"},
+      {codigo:"4AFH", propietario:"MAZA Oriol", centro:"PAMPLONA Calle Sancho el Mayor", provincia:"NAVARRA", delegado:"Sonia Godino", tipo:"Corner"},
+      {codigo:"4AWQ", propietario:"MAZA Oriol", centro:"PAMPLONA Carlos III", provincia:"NAVARRA", delegado:"Sonia Godino", tipo:"Corner"},
+      {codigo:"4MRM", propietario:"AAO", centro:"REINA DE MERCEDES", provincia:"Madrid", delegado:"Sergio Perán", tipo:"Exclusivo"},
+      {codigo:"4PEC", propietario:"AAO", centro:"SANTANDER CC PEÑACASTILLO", provincia:"Santander", delegado:"Sergio Perán", tipo:"Exclusivo"},
+      {codigo:"4AXF", propietario:"URRUTIA Esteban", centro:"SANTIAGO DE COMPOSTELA RUA DA ROSA", provincia:"A Coruña", delegado:"Daniel Chazo", tipo:"Exclusivo"},
+      {codigo:"4TOL", propietario:"AAO", centro:"TORRELAVEGA CARREFOUR CC", provincia:"Santander", delegado:"Sergio Perán", tipo:"Corner"},
+      {codigo:"4ZDE", propietario:"AAO", centro:"ZARAGOZA CALLE DELICIAS", provincia:"ZARAGOZA", delegado:"ENERITZ ARANGUREN", tipo:"Exclusivo"},
+      {codigo:"4AKI", propietario:"PIEDRAFITA Rocio", centro:"CC LOS VALLES", provincia:"MADRID", delegado:"Blanca Fdez. de la Pradilla", tipo:"Exclusivo"},
+      {codigo:"4MLG", propietario:"AAO", centro:"FUENLABRADA Calle Leganes", provincia:"MADRID", delegado:"Marisa Carmona", tipo:"Exclusivo"}
     ];
 
-    function renderDelegadosList() {
-      const cont = $('#delegadosList');
-      cont.innerHTML = '';
-      const map = new Map();
-      centros.forEach(c => {
-        map.set(c.delegado, (map.get(c.delegado)||0) + 1);
-      });
-      $('#badgeNumDelegados').textContent = `${map.size} delegados`;
-      [...map.entries()].sort().forEach(([nombre,count])=>{
-        const div = document.createElement('div');
-        div.className = 'delegado-bar';
-        const color = delegadosColores[nombre] || '#e5e7eb';
-        div.innerHTML = `
-          <span class="delegado-bar-color" style="background:${color}"></span>
-          <div class="delegado-bar-main">
-            <span>${nombre}</span>
-            <span>${count} centros</span>
-          </div>
-        `;
-        cont.appendChild(div);
-      });
-    }
+    const delegadosColores = {
+      "Blanca Fdez. de la Pradilla": "#ec4899",
+      "Marisa Carmona": "#eab308",
+      "Sonia Godino": "#22d3ee",
+      "Sergio Perán": "#fb7185",
+      "Daniel Chazo": "#a855f7",
+      "ENERITZ ARANGUREN": "#22c55e"
+    };
+
+    const visitas = []; // {id, fechaISO, centro, delegado, respAudio, estado, tieneInforme}
+
+    /***** RENDER CENTROS *****/
+    const tablaCentrosBody = $('#tablaCentrosBody');
+    const labelCentrosMostrados = $('#labelCentrosMostrados');
 
     function renderTablaCentros() {
-      const tb = $('#tablaCentrosBody');
-      tb.innerHTML = '';
-      centros.forEach(c=>{
+      tablaCentrosBody.innerHTML = "";
+      centrosData.forEach(c => {
         const tr = document.createElement('tr');
-        const tagTipo = c.tipo === 'Exclusivo' ? 'exclusivo':'corner';
-        const aarEstado = c.aar || 'No';
-        const aarClass = aarEstado === 'Sí' ? 'si' : aarEstado === 'En formación' ? 'formacion':'';
+        const tipoTag = `<span class="tag ${c.tipo === 'Exclusivo' ? 'exclusivo':'corner'}">${c.tipo}</span>`;
         tr.innerHTML = `
           <td>${c.codigo}</td>
           <td>${c.propietario}</td>
           <td>${c.centro}</td>
           <td>${c.provincia}</td>
           <td>${c.delegado}</td>
-          <td><span class="tag ${tagTipo}">${c.tipo}</span></td>
-          <td><button class="btn-link">Añadir informe</button></td>
-          <td><span class="tag tag-aar ${aarClass}">${aarEstado}</span></td>
+          <td>${tipoTag}</td>
+          <td><button class="btn-link" data-crear-informe="${c.centro}">Crear informe</button></td>
         `;
-        tb.appendChild(tr);
+        tablaCentrosBody.appendChild(tr);
       });
-      $('#totalCentrosLabel').textContent = `Centros mostrados: ${centros.length} / ${centros.length}`;
+      labelCentrosMostrados.textContent = `Centros mostrados: ${centrosData.length} / ${centrosData.length}`;
+      actualizarDatalistCentros();
+      actualizarDelegados();
     }
 
-    // Calendario simple
-    let currentCalDate = new Date();
-    function renderCalendar() {
-      const year = currentCalDate.getFullYear();
-      const month = currentCalDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month+1, 0);
-      const cont = $('#calendarDays');
-      cont.innerHTML = '';
-      $('#calTituloMes').textContent = firstDay.toLocaleString('es-ES',{month:'long',year:'numeric'});
+    renderTablaCentros();
 
-      let start = (firstDay.getDay() + 6) % 7; // lunes=0
-      for(let i=0;i<start;i++){
-        const cell = document.createElement('div');
-        cont.appendChild(cell);
-      }
-      const today = new Date();
-      for(let d=1; d<=lastDay.getDate(); d++){
-        const cell = document.createElement('div');
-        cell.className = 'calendar-day';
-        const isToday = d===today.getDate() && month===today.getMonth() && year===today.getFullYear();
-        if(isToday) cell.classList.add('today');
-        cell.innerHTML = `<span class="day-number">${d}</span>`;
-        // demo: un día con visitas
-        if(d===4) {
-          const badge = document.createElement('span');
-          badge.className='day-badge';
-          cell.appendChild(badge);
-        }
-        cont.appendChild(cell);
-      }
-    }
+    /***** DELEGADOS *****/
+    const delegadosList = $('#delegadosList');
+    const contadorDelegados = $('#contadorDelegados');
 
-    function renderVisitasDemo() {
-      const list = $('#visitasList');
-      list.innerHTML = '';
-      const demo = [
-        {fecha:'2025-12-04', centro:'ALBACETE CC LOS LLANOS', delegado:'Albacete', resp:'Ariannys Rojas', estado:'Pendiente'},
-      ];
-      demo.forEach(v=>{
-        const item = document.createElement('div');
-        item.className = 'visita-item';
-        const estadoClass = v.estado === 'Pendiente' ? 'tag-pendiente' : v.estado === 'Realizada' ? 'tag-realizada' : 'tag-anulada';
-        item.innerHTML = `
-          <div class="visita-topline">
-            <span>${v.fecha} · ${v.centro}</span>
-            <span class="tag-estado ${estadoClass}">${v.estado}</span>
+    function actualizarDelegados() {
+      const mapa = new Map();
+      centrosData.forEach(c => {
+        mapa.set(c.delegado, (mapa.get(c.delegado) || 0) + 1);
+      });
+      delegadosList.innerHTML = "";
+      const entries = Array.from(mapa.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
+      entries.forEach(([nombre, count]) => {
+        const div = document.createElement('div');
+        div.className = 'delegado-item';
+        const color = delegadosColores[nombre] || '#60a5fa';
+        div.innerHTML = `
+          <div class="delegado-item-header">
+            <div><span class="delegado-pill-color" style="background:${color}"></span>${nombre}</div>
+            <div>${count} centros</div>
           </div>
-          <div style="font-size:.72rem;color:var(--text-muted);">Del.: ${v.delegado} · Resp. audio: ${v.resp}</div>
+          <div class="delegado-bar-bg">
+            <div class="delegado-bar-fill" style="background:${color}"></div>
+          </div>
         `;
-        list.appendChild(item);
+        div.addEventListener('click', () => filtrarPorDelegado(nombre));
+        delegadosList.appendChild(div);
+      });
+      contadorDelegados.textContent = `${entries.length} delegados`;
+    }
+
+    function filtrarPorDelegado(nombre) {
+      // Solo resalta visualmente; la lógica avanzada se puede añadir después.
+      alert(`Filtro por delegado: ${nombre} (en demo solo resalta, no filtra tabla aún).`);
+    }
+
+    /***** CALENDARIO *****/
+    const calendarGrid = $('#calendarGrid');
+    const calendarTitle = $('#calendarTitle');
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+
+    const dayNames = ['L','M','X','J','V','S','D'];
+
+    function renderCalendar() {
+      calendarGrid.innerHTML = "";
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const startDay = (firstDay.getDay() + 6) % 7; // lunes=0
+      const daysInMonth = new Date(currentYear, currentMonth+1, 0).getDate();
+      const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      calendarTitle.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+
+      // nombres
+      dayNames.forEach(d => {
+        const span = document.createElement('div');
+        span.className = 'calendar-day-name';
+        span.textContent = d;
+        calendarGrid.appendChild(span);
+      });
+
+      const totalCells = 42;
+      for (let i=0;i<totalCells;i++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell';
+        const dateNum = i - startDay + 1;
+        if (dateNum < 1 || dateNum > daysInMonth) {
+          cell.classList.add('disabled');
+        } else {
+          const dateStr = String(dateNum).padStart(2,'0');
+          const fechaISO = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${dateStr}`;
+          const divDate = document.createElement('div');
+          divDate.className = 'calendar-date';
+          divDate.textContent = dateNum;
+          cell.appendChild(divDate);
+
+          // visitas en ese día
+          const visitasDia = visitas.filter(v => v.fechaISO === fechaISO);
+          if (visitasDia.length) {
+            const span = document.createElement('div');
+            span.className = 'calendar-badge';
+            // A o S según responsable de la última
+            const last = visitasDia[visitasDia.length-1];
+            const inicial = last.respAudio.startsWith('A') ? 'A' : 'S';
+            span.textContent = `${inicial} • ${visitasDia.length}`;
+            cell.appendChild(span);
+          }
+
+          cell.addEventListener('click', () => abrirModalVisita(fechaISO));
+        }
+        calendarGrid.appendChild(cell);
+      }
+    }
+
+    $('#calPrev').addEventListener('click', () => {
+      currentMonth--;
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+      renderCalendar();
+    });
+    $('#calNext').addEventListener('click', () => {
+      currentMonth++;
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      renderCalendar();
+    });
+
+    renderCalendar();
+
+    /***** MODAL VISITA *****/
+    function abrirModalVisita(fechaISO) {
+      $('#visitaFecha').value = fechaISO;
+      $('#modalVisita').style.display = 'flex';
+    }
+    function cerrarModalVisita() {
+      $('#modalVisita').style.display = 'none';
+    }
+    $$('#modalVisita [data-close="modalVisita"]').forEach(el=>{
+      el.addEventListener('click', cerrarModalVisita);
+    });
+
+    function actualizarDatalistCentros() {
+      const dl = $('#centrosDatalist');
+      dl.innerHTML = "";
+      centrosData.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.centro;
+        dl.appendChild(opt);
       });
     }
+    actualizarDatalistCentros();
 
-    $('#calPrevMes').addEventListener('click', ()=>{currentCalDate.setMonth(currentCalDate.getMonth()-1);renderCalendar();});
-    $('#calNextMes').addEventListener('click', ()=>{currentCalDate.setMonth(currentCalDate.getMonth()+1);renderCalendar();});
-
-    // ====== INFORME DE LA VISITA – CHARTS Y CHECKLIST ======
-    let chartKPIsCentro, chartRadarCentro, chartProc, chartAreasCentro, chartConvCentro;
-
-    function initInformeChartsDemo() {
-      chartKPIsCentro = makeBarChart($('#chartKPIsCentro'), ['Procesos','Conv. prueba','Conv. venta','HIT','Formaciones','AAR'], [90,82,78,70,60,55], '#60a5fa');
-      chartRadarCentro = makeRadar($('#chartRadarCentro'), ['Procesos','Conv. prueba','Conv. venta','Formación','Producto'], [90,82,78,65,70]);
-      chartProc = makeDonut($('#chartProcesosAplicados'), ['Aplicados','Pendientes'], [75,25], ['#22c55e','#ef4444']);
-      chartAreasCentro = makeBarChart($('#chartAreasMejoraCentro'), ['Procesos','Formación','HIT','Producto','Comunicación'], [30,20,10,20,10], '#f97316', false, 100);
-      chartConvCentro = makeBarChart($('#chartConversionCentro'), ['Conv. prueba','Conv. venta'], [80,72], '#22c55e', false, 100);
-    }
-
-    $('#btnAdjuntarChecklist').addEventListener('click', () => {
-      const fileInput = $('#checklistFile');
-      const file = fileInput.files[0];
-      if (!file) {
-        alert('Selecciona primero un archivo Excel');
+    $('#btnGuardarVisita').addEventListener('click', () => {
+      const fechaISO = $('#visitaFecha').value;
+      const resp = $('#visitaRespAudio').value;
+      const centroNombre = $('#visitaCentro').value.trim();
+      if (!centroNombre) {
+        alert("Indica un centro para la visita.");
         return;
       }
-      $('#checklistFileName').textContent = file.name;
+      const centro = centrosData.find(c => c.centro === centroNombre);
+      const delegado = centro ? centro.delegado : "N/D";
+      const id = Date.now().toString();
+      visitas.push({
+        id,
+        fechaISO,
+        centro: centroNombre,
+        delegado,
+        respAudio: resp,
+        estado: "Pendiente",
+        tieneInforme: false
+      });
+      cerrarModalVisita();
+      renderCalendar();
+      renderVisitas();
+      actualizarKpiVisitas();
+    });
 
+    /***** VISITAS LIST *****/
+    const visitasList = $('#visitasList');
+
+    function renderVisitas() {
+      visitasList.innerHTML = "";
+      if (!visitas.length) {
+        visitasList.innerHTML = `<p style="font-size:.78rem;color:var(--text-muted)">No hay visitas agendadas para este periodo.</p>`;
+        return;
+      }
+      visitas.sort((a,b)=>a.fechaISO.localeCompare(b.fechaISO));
+      visitas.forEach(v => {
+        const div = document.createElement('div');
+        div.className = 'visita-item';
+        const estadoClass = v.estado === 'Pendiente' ? 'estado-pendiente'
+                          : v.estado === 'En proceso' ? 'estado-proceso'
+                          : v.estado === 'Finalizada' ? 'estado-finalizada'
+                          : 'estado-anulada';
+        div.innerHTML = `
+          <div class="visita-main-line">
+            <div>${v.fechaISO} · ${v.centro}</div>
+            <div class="pill-estado ${estadoClass}">${v.estado}</div>
+          </div>
+          <div class="visita-meta">
+            <span>Del.: ${v.delegado}</span>
+            <span>Resp. audio: ${v.respAudio}</span>
+          </div>
+          <div class="visita-meta">
+            <button class="btn-link" data-crear-inf="${v.id}">${v.tieneInforme ? 'Revisar informe':'Crear informe'}</button>
+            <button class="btn-link" data-cambiar-estado="${v.id}">Cambiar estado</button>
+          </div>
+        `;
+        visitasList.appendChild(div);
+      });
+    }
+
+    function actualizarKpiVisitas() {
+      $('#kpiVisitas').textContent = visitas.length.toString();
+    }
+
+    renderVisitas();
+    actualizarKpiVisitas();
+
+    // cambiar estado (ciclo)
+    document.addEventListener('click', e => {
+      if (e.target.matches('[data-cambiar-estado]')) {
+        const id = e.target.dataset.cambiarEstado;
+        const v = visitas.find(x => x.id === id);
+        if (!v) return;
+        const orden = ["Pendiente","En proceso","Finalizada","Anulada"];
+        const idx = orden.indexOf(v.estado);
+        v.estado = orden[(idx+1) % orden.length];
+        renderVisitas();
+        renderCalendar();
+      }
+    });
+
+    // crear informe desde visita
+    document.addEventListener('click', e => {
+      if (e.target.matches('[data-crear-inf]')) {
+        const id = e.target.dataset.crearInf;
+        const v = visitas.find(x => x.id === id);
+        if (!v) return;
+        rellenarInformeDesdeVisita(v);
+        v.estado = "En proceso";
+        v.tieneInforme = true;
+        renderVisitas();
+        renderCalendar();
+      }
+    });
+
+    // crear informe desde tabla centros
+    document.addEventListener('click', e => {
+      if (e.target.matches('[data-crear-informe]')) {
+        const centroNombre = e.target.dataset.crearInforme;
+        const centro = centrosData.find(c => c.centro === centroNombre);
+        const hoy = new Date();
+        const fechaISO = hoy.toISOString().slice(0,10);
+        const id = Date.now().toString();
+        const visita = {
+          id,
+          fechaISO,
+          centro: centroNombre,
+          delegado: centro ? centro.delegado : "N/D",
+          respAudio: "Ariannys Rojas",
+          estado: "En proceso",
+          tieneInforme: true
+        };
+        visitas.push(visita);
+        renderVisitas();
+        renderCalendar();
+        actualizarKpiVisitas();
+        rellenarInformeDesdeVisita(visita);
+      }
+    });
+
+    function rellenarInformeDesdeVisita(v) {
+      const centro = centrosData.find(c => c.centro === v.centro);
+      $('#infCentro').value = v.centro;
+      $('#infProvincia').value = centro ? centro.provincia : "";
+      $('#infDelegado').value = v.delegado;
+      $('#infTipo').value = centro ? centro.tipo : "";
+      $('#infRespAudio').value = v.respAudio;
+      $('#infFecha').value = v.fechaISO;
+      $('#infAudiologo').value = "";
+      $('#infHoras').value = "";
+      toggleSection('informeSection');
+    }
+
+    /***** ADJUNTAR CENTROS DESDE EXCEL *****/
+    $('#btnAdjuntarExcelCentros').addEventListener('click', () => {
+      $('#inputExcelCentros').click();
+    });
+
+    $('#inputExcelCentros').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = evt => {
         const data = new Uint8Array(evt.target.result);
-        const wb = XLSX.read(data, { type: 'array' });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-        // Construir tabla checklist para impresión
-        const table = document.createElement('table');
-        json.forEach((row, idx) => {
-          const tr = document.createElement('tr');
-          row.forEach(cell => {
-            const el = document.createElement(idx===0?'th':'td');
-            el.textContent = cell ?? '';
-            tr.appendChild(el);
+        const workbook = XLSX.read(data, {type:'array'});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
+        // se asume: CODIGO | PROPIETARIO | CENTRO | PROVINCIA | DELEGADO | TIPO
+        rows.slice(1).forEach(r => {
+          if (!r || !r[2]) return;
+          centrosData.push({
+            codigo: String(r[0] || '').trim(),
+            propietario: String(r[1] || '').trim(),
+            centro: String(r[2] || '').trim(),
+            provincia: String(r[3] || '').trim(),
+            delegado: String(r[4] || '').trim(),
+            tipo: String(r[5] || 'Corner').trim()
           });
-          table.appendChild(tr);
         });
-        const cont = $('#checklistImprimible');
-        cont.innerHTML = '';
-        cont.appendChild(table);
-
-        // >>> AQUÍ ENGANCHARÁS LA LÓGICA REAL CON CELDAS F90 / F104 / etc. <<<
-        // De momento se actualizan los gráficos con los mismos valores demo
-        chartKPIsCentro.data.datasets[0].data = [90,82,78,70,60,55];
-        chartKPIsCentro.update();
-        chartRadarCentro.data.datasets[0].data = [90,82,78,65,70];
-        chartRadarCentro.update();
-        chartProc.data.datasets[0].data = [75,25];
-        chartProc.update();
-        chartAreasCentro.update();
-        chartConvCentro.update();
+        renderTablaCentros();
       };
       reader.readAsArrayBuffer(file);
     });
 
-    $('#btnGuardarInforme').addEventListener('click', () => {
-      alert('En una versión completa, aquí se guardaría el informe y se actualizarían los KPIs del dashboard.');
+    /***** DASHBOARD CHARTS (DEMO) *****/
+    let radarGeneralChart, chartProcesosAreasMes, chartAreasMes, chartAuxilios, chartTopAreas, chartAARHIT;
+
+    function initDashboardCharts() {
+      const ctxRadar = $('#radarGeneral');
+      radarGeneralChart = new Chart(ctxRadar, {
+        type: 'radar',
+        data: {
+          labels: ['Procesos','Conv. prueba','Conv. venta','Formación','Producto'],
+          datasets: [{
+            label: 'Global',
+            data: [82,78,72,65,70],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.2)'
+          }]
+        },
+        options: {plugins:{legend:{display:false}}, scales:{r:{grid:{color:'#1f2937'},angleLines:{color:'#1f2937'},pointLabels:{color: '#9ca3af'}}}}
+      });
+
+      chartProcesosAreasMes = new Chart($('#chartProcesosAreasMes'), {
+        type:'bar',
+        data:{
+          labels:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov'],
+          datasets:[
+            {label:'Procesos %', data:[70,72,74,76,78,80,81,82,83,84,85], backgroundColor:'#60a5fa'},
+            {label:'Áreas de mejora', data:[5,5,4,4,4,3,3,2,2,2,1], type:'line', borderColor:'#f97316', yAxisID:'y1'}
+          ]
+        },
+        options:{responsive:true,plugins:{legend:{labels:{color:'#e5e7eb'}}},
+        scales:{y:{ticks:{color:'#e5e7eb'}}, y1:{position:'right',ticks:{color:'#f97316'}}}}
+      });
+
+      chartAreasMes = new Chart($('#chartAreasMes'), {
+        type:'bar',
+        data:{
+          labels:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct'],
+          datasets:[{label:'Áreas de mejora', data:[6,5,5,4,4,3,3,3,2,2], backgroundColor:'#f97373'}]
+        },
+        options:{plugins:{legend:{display:false}}, scales:{y:{ticks:{color:'#e5e7eb'}}}}
+      });
+
+      chartAuxilios = new Chart($('#chartAuxilios'), {
+        type:'bar',
+        data:{
+          labels:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+          datasets:[{label:'Equipos formados', data:[10,20,25,30,40,50,55,60,65,70,75,80], backgroundColor:'#22c55e'}]
+        },
+        options:{plugins:{legend:{display:false}}, scales:{y:{ticks:{color:'#e5e7eb'}}}}
+      });
+
+      chartTopAreas = new Chart($('#chartTopAreas'), {
+        type:'bar',
+        data:{
+          labels:['Seguimiento','Escaparate','Formación','Postventa','Citas'],
+          datasets:[{label:'Nº incidencias', data:[10,9,8,7,5], backgroundColor:'#38bdf8'}]
+        },
+        options:{indexAxis:'y',plugins:{legend:{display:false}}}
+      });
+
+      chartAARHIT = new Chart($('#chartAARHIT'), {
+        type:'doughnut',
+        data:{
+          labels:['Centros con AAR','Sin AAR'],
+          datasets:[{data:[60,40], backgroundColor:['#22c55e','#ef4444']}]
+        },
+        options:{plugins:{legend:{labels:{color:'#e5e7eb'}}}}
+      });
+
+      // Ranking demo
+      const ranking = [
+        {nombre:'Blanca Fdez. de la Pradilla', score:90},
+        {nombre:'Sergio Perán', score:87},
+        {nombre:'Daniel Chazo', score:84},
+        {nombre:'Sonia Godino', score:83},
+        {nombre:'ENERITZ ARANGUREN', score:83},
+        {nombre:'Marisa Carmona', score:80},
+      ];
+      const container = $('#rankingDelegados');
+      container.innerHTML = "";
+      ranking.forEach((r,i)=>{
+        const div = document.createElement('div');
+        div.className = 'ranking-item';
+        div.innerHTML = `
+          <div>${i+1}. ${r.nombre}</div>
+          <div class="ranking-row">
+            <div class="ranking-bar-bg">
+              <div class="ranking-bar-fill" style="width:${r.score}%"></div>
+            </div>
+            <span style="font-size:.75rem">${r.score}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    initDashboardCharts();
+
+    /***** INFORME: FORMACIONES LIST *****/
+    const formacionesItems = [
+      "WSA","Starkey","Habilidades comerciales / Neuroventas","HIT","Telecare","PIA","Telehear",
+      "Financiación Infinity","Venta de seguro","Primeros auxilios (equipo)","Audiometría RT","Test de lectura audio",
+      "Screening audio","Manteleta audio","Escaparate visible audio","Salud auditiva en PDV","Elementos Renove",
+      "Elementos MGM","Stock","Tchin Tchin"
+    ];
+    const formList = $('#formacionesList');
+    formacionesItems.forEach(txt=>{
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" /> ${txt}`;
+      formList.appendChild(label);
     });
 
-    // ====== INIT GENERAL ======
-    document.addEventListener('DOMContentLoaded', () => {
-      initDashboard();
-      renderDelegadosList();
-      renderTablaCentros();
-      renderCalendar();
-      renderVisitasDemo();
-      initInformeChartsDemo();
+    /***** INFORME: IMÁGENES *****/
+    $$('.imagen-slot').forEach(slot => {
+      const input = slot.querySelector('input[type="file"]');
+      slot.addEventListener('click', () => input.click());
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = slot.querySelector('.imagen-preview');
+          img.src = ev.target.result;
+          img.style.display = 'block';
+          slot.querySelector('span').textContent = file.name;
+        };
+        reader.readAsDataURL(file);
+      });
     });
+
+    /***** INFORME CHARTS *****/
+    let chartKpisCentro, chartRadarCentro, chartResumenProcesos, chartResumenAreas, chartResumenConv;
+
+    function initInformeCharts() {
+      chartKpisCentro = new Chart($('#chartKpisCentro'), {
+        type:'bar',
+        data:{
+          labels:['Procesos','Conv. prueba','Conv. venta','HIT','Formaciones','AAR','1os auxilios'],
+          datasets:[{label:'% centro', data:[90,82,78,70,65,55,68], backgroundColor:['#60a5fa','#a855f7','#22c55e','#f97316','#eab308','#38bdf8','#f97373']}]
+        },
+        options:{plugins:{legend:{display:false}}, scales:{y:{ticks:{color:'#e5e7eb'}}}}
+      });
+
+      chartRadarCentro = new Chart($('#chartRadarCentro'), {
+        type:'radar',
+        data:{
+          labels:['Procesos','Conv. prueba','Conv. venta','Formación','Producto','Comunicación'],
+          datasets:[{data:[90,82,78,70,65,68], borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,0.25)'}]
+        },
+        options:{plugins:{legend:{display:false}}, scales:{r:{grid:{color:'#1f2937'},angleLines:{color:'#1f2937'},pointLabels:{color:'#9ca3af'}}}}
+      });
+
+      chartResumenProcesos = new Chart($('#chartResumenProcesos'), {
+        type:'doughnut',
+        data:{
+          labels:['Aplicados','Pendientes'],
+          datasets:[{data:[75,25], backgroundColor:['#22c55e','#ef4444']}]
+        },
+        options:{plugins:{legend:{labels:{color:'#e5e7eb'}}}}
+      });
+
+      chartResumenAreas = new Chart($('#chartResumenAreas'), {
+        type:'bar',
+        data:{
+          labels:['Procesos','Formación','HIT','Producto','Comunicación'],
+          datasets:[{label:'Áreas de mejora', data:[3,2,1,2,1], backgroundColor:'#f97373'}]
+        },
+        options:{plugins:{legend:{display:false}}, scales:{y:{ticks:{color:'#e5e7eb'}}}}
+      });
+
+      chartResumenConv = new Chart($('#chartResumenConv'), {
+        type:'bar',
+        data:{
+          labels:['Conv. prueba','Conv. venta'],
+          datasets:[{label:'%', data:[82,78], backgroundColor:['#60a5fa','#22c55e']}]
+        },
+        options:{plugins:{legend:{display:false}}, scales:{y:{ticks:{color:'#e5e7eb'}}}}
+      });
+    }
+
+    initInformeCharts();
+
+    /***** CHECKLIST EXCEL -> KPIs + TABLA *****/
+    let checklistWorkbook = null;
+
+    $('#inputChecklist').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const data = new Uint8Array(evt.target.result);
+        checklistWorkbook = XLSX.read(data, {type:'array'});
+        $('#checklistInfo').textContent = `Checklist cargado: ${file.name}`;
+        renderChecklistTabla();
+        recalcularKpisDesdeChecklist(file.name);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function renderChecklistTabla() {
+      const cont = $('#checklistTablaCont');
+      if (!checklistWorkbook) {
+        cont.innerHTML = `<p style="font-size:.8rem;color:var(--text-muted);">No se ha adjuntado checklist en esta visita.</p>`;
+        return;
+      }
+      const sheet = checklistWorkbook.Sheets[checklistWorkbook.SheetNames[0]];
+      const range = XLSX.utils.decode_range(sheet['!ref']);
+      const table = document.createElement('table');
+      table.style.fontSize = ".7rem";
+      table.style.borderCollapse = "collapse";
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        const tr = document.createElement('tr');
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({r:R,c:C});
+          const cell = sheet[cellAddress];
+          const td = document.createElement(R===range.s.r ? 'th' : 'td');
+          td.textContent = cell ? XLSX.utils.format_cell(cell) : "";
+          td.style.border = "1px solid #d1d5db";
+          td.style.padding = "2px 4px";
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      cont.innerHTML = "";
+      cont.appendChild(table);
+    }
+
+    function getCellNumber(sheet, addr) {
+      const cell = sheet[addr];
+      if (!cell) return 0;
+      const v = parseFloat(XLSX.utils.format_cell(cell).toString().replace(',','.'));
+      return isNaN(v) ? 0 : v;
+    }
+
+    function recalcularKpisDesdeChecklist(filename) {
+      if (!checklistWorkbook) return;
+      const sheet = checklistWorkbook.Sheets[checklistWorkbook.SheetNames[0]];
+      const nameUpper = filename.toUpperCase();
+      let procesos = 0, convPrueba = 0, convVenta = 0, hit = 0;
+
+      if (nameUpper.includes("CORNER")) {
+        procesos = getCellNumber(sheet,'F90');
+        convPrueba = getCellNumber(sheet,'B92');
+        convVenta = getCellNumber(sheet,'B93');
+        hit = getCellNumber(sheet,'F63') * 100; // si es 0/1
+      } else if (nameUpper.includes("EXCLUS")) {
+        procesos = getCellNumber(sheet,'F104');
+        convPrueba = getCellNumber(sheet,'I126');
+        convVenta = getCellNumber(sheet,'I127');
+        hit = getCellNumber(sheet,'F65') * 100;
+      } else {
+        // formato desconocido: dejamos demo
+      }
+
+      // Actualizar gráfico de KPIs del centro (solo algunos valores; resto demo)
+      chartKpisCentro.data.datasets[0].data[0] = procesos || 90;
+      chartKpisCentro.data.datasets[0].data[1] = convPrueba || 82;
+      chartKpisCentro.data.datasets[0].data[2] = convVenta || 78;
+      chartKpisCentro.data.datasets[0].data[3] = hit || 70;
+      chartKpisCentro.update();
+
+      chartRadarCentro.data.datasets[0].data[0] = procesos || 90;
+      chartRadarCentro.data.datasets[0].data[1] = convPrueba || 82;
+      chartRadarCentro.data.datasets[0].data[2] = convVenta || 78;
+      chartRadarCentro.update();
+
+      // resumen conversión
+      chartResumenConv.data.datasets[0].data = [convPrueba || 82, convVenta || 78];
+      chartResumenConv.update();
+    }
+
+    /***** GUARDAR INFORME *****/
+    $('#btnGuardarInforme').addEventListener('click', () => {
+      alert("Informe guardado (demo). La visita asociada pasa a Finalizada.");
+      // Marcar la última visita en proceso como finalizada
+      const v = visitas.slice().reverse().find(x => x.estado === 'En proceso' && x.tieneInforme);
+      if (v) {
+        v.estado = 'Finalizada';
+        renderVisitas();
+        renderCalendar();
+      }
+    });
+
+    /***** INICIALIZACIÓN FINAL *****/
+    console.log("Control Center Audio cargado (demo).");
   </script>
 </body>
 </html>
